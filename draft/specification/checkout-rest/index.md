@@ -1,6 +1,6 @@
 # Checkout Capability - REST Binding
 
-This document specifies the REST binding for the [Checkout Capability](https://ucp.dev/draft/specification/checkout/index.md).
+This document specifies the REST binding for the [Checkout Capability](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/index.md).
 
 ## Protocol Fundamentals
 
@@ -21,13 +21,13 @@ All REST endpoints **MUST** be served over HTTPS with minimum TLS version 1.3.
 
 ## Operations
 
-| Operation                                                                            | Method | Endpoint                           | Description                |
-| ------------------------------------------------------------------------------------ | ------ | ---------------------------------- | -------------------------- |
-| [Create Checkout](https://ucp.dev/draft/specification/checkout/#create-checkout)     | `POST` | `/checkout-sessions`               | Create a checkout session. |
-| [Get Checkout](https://ucp.dev/draft/specification/checkout/#get-checkout)           | `GET`  | `/checkout-sessions/{id}`          | Get a checkout session.    |
-| [Update Checkout](https://ucp.dev/draft/specification/checkout/#update-checkout)     | `PUT`  | `/checkout-sessions/{id}`          | Update a checkout session. |
-| [Complete Checkout](https://ucp.dev/draft/specification/checkout/#complete-checkout) | `POST` | `/checkout-sessions/{id}/complete` | Place the order.           |
-| [Cancel Checkout](https://ucp.dev/draft/specification/checkout/#cancel-checkout)     | `POST` | `/checkout-sessions/{id}/cancel`   | Cancel a checkout session. |
+| Operation                                                                                                   | Method | Endpoint                           | Description                |
+| ----------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------- | -------------------------- |
+| [Create Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#create-checkout)     | `POST` | `/checkout-sessions`               | Create a checkout session. |
+| [Get Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#get-checkout)           | `GET`  | `/checkout-sessions/{id}`          | Get a checkout session.    |
+| [Update Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#update-checkout)     | `PUT`  | `/checkout-sessions/{id}`          | Update a checkout session. |
+| [Complete Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#complete-checkout) | `POST` | `/checkout-sessions/{id}/complete` | Place the order.           |
+| [Cancel Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#cancel-checkout)     | `POST` | `/checkout-sessions/{id}/cancel`   | Cancel a checkout session. |
 
 ## Examples
 
@@ -42,11 +42,8 @@ Content-Type: application/json
   "line_items": [
     {
       "item": {
-        "id": "item_123",
-        "title": "Red T-Shirt",
-        "price": 2500
+        "id": "item_123"
       },
-      "id": "li_1",
       "quantity": 2
     }
   ]
@@ -59,17 +56,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.shopify.shop_pay": [
         {
           "id": "shop_pay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "available_instruments": [
             {"type": "shop_pay"}
           ],
@@ -143,6 +140,26 @@ Content-Type: application/json
 }
 ```
 
+All items out of stock — no checkout resource is created:
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "ucp": { "version": "2026-01-11", "status": "error" },
+  "messages": [
+    {
+      "type": "error",
+      "code": "out_of_stock",
+      "content": "All requested items are currently out of stock",
+      "severity": "unrecoverable"
+    }
+  ],
+  "continue_url": "https://merchant.com/"
+}
+```
+
 ### Update Checkout
 
 #### Update Buyer Info
@@ -164,9 +181,7 @@ Content-Type: application/json
   "line_items": [
     {
       "item": {
-        "id": "item_123",
-        "title": "Red T-Shirt",
-        "price": 2500
+        "id": "item_123"
       },
       "id": "li_1",
       "quantity": 2
@@ -181,17 +196,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.shopify.shop_pay": [
         {
           "id": "shop_pay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "available_instruments": [
             {"type": "shop_pay"}
           ],
@@ -208,7 +223,7 @@ Content-Type: application/json
     {
       "type": "error",
       "code": "missing",
-      "path": "$.fulfillment.method[0].selected_destination_id",
+      "path": "$.fulfillment.methods[0].selected_destination_id",
       "content": "Fulfillment address is required",
       "severity": "recoverable"
     }
@@ -289,9 +304,7 @@ Content-Type: application/json
   "line_items": [
     {
       "item": {
-        "id": "item_123",
-        "title": "Red T-Shirt",
-        "price": 2500
+        "id": "item_123"
       },
       "id": "li_1",
       "quantity": 2
@@ -322,17 +335,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.google.pay": [
         {
           "id": "gpay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "config": {
             "allowed_payment_methods": [
               {
@@ -404,7 +417,7 @@ Content-Type: application/json
       {
         "id": "shipping_1",
         "type": "shipping",
-        "line_item_ids": ["item_123"],
+        "line_item_ids": ["li_1"],
         "selected_destination_id": "dest_home",
         "destinations": [
           {
@@ -419,7 +432,7 @@ Content-Type: application/json
         "groups": [
           {
             "id": "package_1",
-            "line_item_ids": ["item_123"],
+            "line_item_ids": ["li_1"],
             "selected_option_id": "standard",
             "options": [
               {
@@ -487,9 +500,7 @@ Content-Type: application/json
   "line_items": [
     {
       "item": {
-        "id": "item_123",
-        "title": "Red T-Shirt",
-        "price": 2500
+        "id": "item_123"
       },
       "id": "li_1",
       "quantity": 2,
@@ -500,7 +511,7 @@ Content-Type: application/json
       {
         "id": "shipping_1",
         "type": "shipping",
-        "line_item_ids": ["item_123"],
+        "line_item_ids": ["li_1"],
         "selected_destination_id": "dest_home",
         "destinations": [
           {
@@ -530,17 +541,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.shopify.shop_pay": [
         {
           "id": "shop_pay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "available_instruments": [
             {"type": "shop_pay"}
           ],
@@ -599,7 +610,7 @@ Content-Type: application/json
       {
         "id": "shipping_1",
         "type": "shipping",
-        "line_item_ids": ["item_123"],
+        "line_item_ids": ["li_1"],
         "selected_destination_id": "dest_home",
         "destinations": [
           {
@@ -614,7 +625,7 @@ Content-Type: application/json
         "groups": [
           {
             "id": "package_1",
-            "line_item_ids": ["item_123"],
+            "line_item_ids": ["li_1"],
             "selected_option_id": "express",
             "options": [
               {
@@ -698,8 +709,9 @@ Content-Type: application/json
       }
     ]
   },
-  "risk_signals": {
-    //... risk signal related data (device fingerprint / risk token)
+  "signals": {
+    "dev.ucp.buyer_ip": "203.0.113.42",
+    "dev.ucp.user_agent": "Mozilla/5.0 ..."
   }
 }
 ```
@@ -710,17 +722,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.google.pay": [
         {
           "id": "gpay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "config": {
             "allowed_payment_methods": [
               {
@@ -787,7 +799,7 @@ Content-Type: application/json
       {
         "id": "shipping_1",
         "type": "shipping",
-        "line_item_ids": ["item_123"],
+        "line_item_ids": ["li_1"],
         "selected_destination_id": "dest_home",
         "destinations": [
           {
@@ -802,7 +814,7 @@ Content-Type: application/json
         "groups": [
           {
             "id": "package_1",
-            "line_item_ids": ["item_123"],
+            "line_item_ids": ["li_1"],
             "selected_option_id": "express",
             "options": [
               {
@@ -867,17 +879,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.shopify.shop_pay": [
         {
           "id": "shop_pay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "available_instruments": [
             {"type": "shop_pay"}
           ],
@@ -940,7 +952,7 @@ Content-Type: application/json
       {
         "id": "shipping_1",
         "type": "shipping",
-        "line_item_ids": ["item_123"],
+        "line_item_ids": ["li_1"],
         "selected_destination_id": "dest_home",
         "destinations": [
           {
@@ -955,7 +967,7 @@ Content-Type: application/json
         "groups": [
           {
             "id": "package_1",
-            "line_item_ids": ["item_123"],
+            "line_item_ids": ["li_1"],
             "selected_option_id": "express",
             "options": [
               {
@@ -1018,17 +1030,17 @@ Content-Type: application/json
 
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.checkout": [
-        {"version": "2026-01-11"}
+        {"version": "draft"}
       ]
     },
     "payment_handlers": {
       "com.google.pay": [
         {
           "id": "gpay_1234",
-          "version": "2026-01-11",
+          "version": "draft",
           "config": {
             "allowed_payment_methods": [
               {
@@ -1091,7 +1103,7 @@ Content-Type: application/json
       {
         "id": "shipping_1",
         "type": "shipping",
-        "line_item_ids": ["item_123"],
+        "line_item_ids": ["li_1"],
         "selected_destination_id": "dest_home",
         "destinations": [
           {
@@ -1106,7 +1118,7 @@ Content-Type: application/json
         "groups": [
           {
             "id": "package_1",
-            "line_item_ids": ["item_123"],
+            "line_item_ids": ["li_1"],
             "selected_option_id": "express",
             "options": [
               {
@@ -1175,7 +1187,7 @@ The following headers are defined for the HTTP binding and apply to all operatio
 | `Content-Type`    | No       | Representation Metadata. Tells the receiver what the data in the message body actually is.                                                                                                                                                                    |
 | `Accept`          | No       | Content Negotiation. The client tells the server what data formats it is capable of understanding.                                                                                                                                                            |
 | `Accept-Language` | No       | Localization. Tells the receiver the user's preferred natural languages, often with "weights" or priorities.                                                                                                                                                  |
-| `Accept-Encoding` | No       | Compression. The client tells the server which content-codings it supports, usually for compression                                                                                                                                                           |
+| `Accept-Encoding` | No       | Compression. The client tells the server which content-codings it supports, usually for compression.                                                                                                                                                          |
 
 ### Specific Header Requirements
 
@@ -1207,7 +1219,7 @@ UCP uses standard HTTP status codes to indicate the success or failure of an API
 
 ### Error Responses
 
-See the [Core Specification](https://ucp.dev/draft/specification/overview/#error-handling) for the complete error code registry and transport binding examples.
+See the [Core Specification](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling) for the complete error code registry and transport binding examples.
 
 - **Protocol errors**: Return appropriate HTTP status code (401, 403, 409, 429, 503) with JSON body containing `code` and `content`.
 - **Business outcomes**: Return HTTP 200 with UCP envelope and `messages` array.
@@ -1219,20 +1231,26 @@ Business outcomes (including errors like unavailable merchandise) are returned w
 ```json
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
-      "dev.ucp.shopping.checkout": [{"version": "2026-01-11"}]
+      "dev.ucp.shopping.checkout": [{"version": "draft"}]
     }
   },
   "id": "checkout_abc123",
   "status": "incomplete",
   "line_items": [
     {
-      "id": "item_456",
-      "quantity": 100,
-      "available_quantity": 12
+      "id": "li_1",
+        "item": {
+          "id": "item_123",
+          "title": "Blue Jeans",
+          "price": 5000
+        },
+      "quantity": 12,
+      "totals": [...]
     }
   ],
+  "totals": [...],
   "messages": [
     {
       "type": "warning",
@@ -1245,9 +1263,26 @@ Business outcomes (including errors like unavailable merchandise) are returned w
 }
 ```
 
+For `create_checkout`, when all items unavailable and no checkout can be created, returns HTTP 200 and the UCP envelope containing `messages`
+
+```json
+{
+  "ucp": { "version": "2026-01-11", "status": "error" },
+  "messages": [
+    {
+      "type": "error",
+      "code": "item_unavailable",
+      "content": "All items are not available for purchase",
+      "severity": "unrecoverable"
+    }
+  ],
+  "continue_url": "https://merchant.com/"
+}
+```
+
 ## Message Signing
 
-Platforms **MAY** choose among authentication mechanisms (API keys, OAuth, mTLS, HTTP Message Signatures). When using HTTP Message Signatures, checkout operations follow the [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) specification.
+Platforms **MAY** choose among authentication mechanisms (API keys, OAuth, mTLS, HTTP Message Signatures). When using HTTP Message Signatures, checkout operations follow the [Message Signatures](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/index.md) specification.
 
 ### Request Signing
 
@@ -1276,7 +1311,7 @@ Signature: sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:
 {"line_items":[{"item":{"id":"item_123"},"quantity":2}]}
 ```
 
-See [Message Signatures - REST Request Signing](https://ucp.dev/draft/specification/signatures/#rest-request-signing) for the complete signing algorithm.
+See [Message Signatures - REST Request Signing](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-signing) for the complete signing algorithm.
 
 ### Response Signing
 
@@ -1300,7 +1335,7 @@ Signature: sig1=:MFQCIH7kL9nM2oP5qR8sT1uV4wX6yZaB3cD...:
 {"id":"chk_123","status":"completed","order":{"id":"ord_456"}}
 ```
 
-See [Message Signatures - REST Response Signing](https://ucp.dev/draft/specification/signatures/#rest-response-signing) for the complete signing algorithm.
+See [Message Signatures - REST Response Signing](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-response-signing) for the complete signing algorithm.
 
 ## Security Considerations
 
@@ -1310,7 +1345,7 @@ Authentication is optional and depends on business requirements. When authentica
 
 1. **Open API**: No authentication required for public operations.
 1. **API Keys**: Via `X-API-Key` header.
-1. **OAuth 2.0**: Via `Authorization: Bearer {token}` header, following [RFC 6749](https://tools.ietf.org/html/rfc6749).
+1. **OAuth 2.0**: Via `Authorization: Bearer {token}` header. Identifies the platform for agent-authenticated access, or both platform and user for user-authenticated access (see [Identity Linking](https://sakinaroufid.github.io/pr-test/draft/specification/identity-linking/index.md)).
 1. **Mutual TLS**: For high-security environments.
 1. **HTTP Message Signatures**: Per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) (see [Message Signing](#message-signing) above).
 

@@ -92,7 +92,7 @@ While businesses receive only encrypted `EncryptedCredential` payloads during ch
 
 Businesses advertise the platform's handler. The `business_id` field identifies the business, which the platform uses to look up the correct public key for encryption.
 
-The only supported instrument schema is [CardPaymentInstrument](https://ucp.dev/schemas/shopping/types/card_payment_instrument.json), the only supported checkout credential schema is `EncryptedCredential`, and the only supported source credential schema is [CardCredential](https://ucp.dev/schemas/shopping/types/card_credential.json).
+The only supported instrument schema is [CardPaymentInstrument](/pr-test/draft/schemas/shopping/types/card_payment_instrument.json), the only supported checkout credential schema is `EncryptedCredential`, and the only supported source credential schema is [CardCredential](/pr-test/draft/schemas/shopping/types/card_credential.json).
 
 **Note:** The `EncryptedCredential` shape would be formally defined in the handler's schema (referenced via the `schema` field in the handler declaration).
 
@@ -111,12 +111,12 @@ The only supported instrument schema is [CardPaymentInstrument](https://ucp.dev/
 ```json
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "payment_handlers": {
       "com.example.platform_encrypted": [
         {
           "id": "platform_encrypted",
-          "version": "2026-01-11",
+          "version": "draft",
           "spec": "https://platform.example.com/ucp/encrypted-handler.json",
           "schema": "https://platform.example.com/ucp/encrypted-handler/schema.json",
           "available_instruments": [
@@ -155,7 +155,7 @@ The response config includes information about the encryption used.
 ```json
 {
   "id": "platform_encrypted",
-  "version": "2026-01-11",
+  "version": "draft",
   "available_instruments": [
     {
       "type": "card",
@@ -219,12 +219,12 @@ Platforms advertise this handler in their UCP profile's `payment_handlers` regis
 ```json
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "payment_handlers": {
       "com.example.platform_encrypted": [
         {
           "id": "platform_encrypted",
-          "version": "2026-01-11",
+          "version": "draft",
           "spec": "https://platform.example.com/ucp/encrypted-handler.json",
           "schema": "https://platform.example.com/ucp/encrypted-handler/schema.json",
           "available_instruments": [
@@ -288,8 +288,9 @@ Content-Type: application/json
       }
     ]
   },
-  "risk_signals": {
-    // ... the key value pair for potential risk signal data
+  "signals": {
+    "dev.ucp.buyer_ip": "203.0.113.42",
+    "dev.ucp.user_agent": "Mozilla/5.0 ..."
   }
 }
 ```
@@ -313,5 +314,5 @@ ______________________________________________________________________
 
 ## References
 
-- **Identity Schema:** `https://ucp.dev/schemas/shopping/types/payment_identity.json`
-- **Instrument Schema:** `https://ucp.dev/schemas/shopping/types/card_payment_instrument.json`
+- **Identity Schema:** [schemas/shopping/types/payment_identity.json](/pr-test/draft/schemas/shopping/types/payment_identity.json)
+- **Instrument Schema:** [schemas/shopping/types/card_payment_instrument.json](/pr-test/draft/schemas/shopping/types/card_payment_instrument.json)

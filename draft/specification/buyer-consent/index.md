@@ -17,7 +17,7 @@ Businesses advertise consent support in their profile:
   "capabilities": {
     "dev.ucp.shopping.buyer_consent": [
       {
-        "version": "2026-01-11",
+        "version": "draft",
         "extends": "dev.ucp.shopping.checkout"
       }
     ]
@@ -36,6 +36,8 @@ The consent extension extends the **buyer object** within checkout:
 ## Schema Definition
 
 ### Consent Object
+
+User consent states for data processing
 
 | Name         | Type    | Required | Description                                       |
 | ------------ | ------- | -------- | ------------------------------------------------- |
@@ -84,7 +86,7 @@ POST /checkouts
 ```json
 {
   "id": "checkout_456",
-  "status": "ready_for_payment",
+  "status": "ready_for_complete",
   "currency": "USD",
   "buyer": {
     "email": "jane.doe@example.com",

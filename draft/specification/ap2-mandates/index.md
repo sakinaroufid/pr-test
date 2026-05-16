@@ -35,16 +35,16 @@ Businesses declare support by adding `dev.ucp.shopping.ap2_mandate` to their `ca
   "capabilities": {
     "dev.ucp.shopping.checkout": [
       {
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/checkout",
-        "schema": "https://ucp.dev/schemas/shopping/checkout.json"
+        "version": "draft",
+        "spec": "https://ucp.dev/draft/specification/checkout",
+        "schema": "https://ucp.dev/draft/schemas/shopping/checkout.json"
       }
     ],
     "dev.ucp.shopping.ap2_mandate": [
       {
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/ap2-mandates",
-        "schema": "https://ucp.dev/schemas/shopping/ap2_mandate.json",
+        "version": "draft",
+        "spec": "https://ucp.dev/draft/specification/ap2-mandates",
+        "schema": "https://ucp.dev/draft/schemas/shopping/ap2_mandate.json",
         "extends": "dev.ucp.shopping.checkout",
         "config": {
           "vp_formats_supported": {
@@ -81,14 +81,14 @@ If a public key cannot be resolved, or if the signature is invalid, the business
 
 ## Cryptographic Requirements
 
-This extension uses the cryptographic primitives defined in the [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) specification:
+This extension uses the cryptographic primitives defined in the [Message Signatures](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/index.md) specification:
 
 - **Algorithms:** ES256 (required), ES384, ES512
 - **Canonicalization:** JCS ([RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785))
 - **Key Format:** JWK ([RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517))
-- **Key Discovery:** `signing_keys[]` in `/.well-known/ucp` (see [Key Discovery](https://ucp.dev/draft/specification/overview/#key-discovery))
+- **Key Discovery:** `signing_keys[]` in `/.well-known/ucp` (see [Key Discovery](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#key-discovery))
 
-See [Message Signatures](https://ucp.dev/draft/specification/signatures/index.md) for complete details on algorithms, key format, and key rotation.
+See [Message Signatures](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/index.md) for complete details on algorithms, key format, and key rotation.
 
 ### Business Authorization
 
@@ -178,22 +178,27 @@ Once the `dev.ucp.shopping.ap2_mandate` capability is negotiated, the session is
 
 The platform initiates the session. The business returns the `Checkout` object with `ap2.merchant_authorization` embedded in the response body.
 
-| Name         | Type          | Required | Description                                                                                                                                                                                                                                                     |
-| ------------ | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | any           | **Yes**  | UCP metadata for checkout responses.                                                                                                                                                                                                                            |
-| id           | string        | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                      |
-| line_items   | Array[object] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                           |
-| buyer        | object        | No       | Representation of the buyer.                                                                                                                                                                                                                                    |
-| status       | string        | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled` |
-| currency     | string        | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                          |
-| totals       | Array[object] | **Yes**  | Different cart totals.                                                                                                                                                                                                                                          |
-| messages     | Array[object] | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                          |
-| links        | Array[object] | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                    |
-| expires_at   | string        | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                    |
-| continue_url | string        | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                 |
-| payment      | object        | No       | Payment configuration containing handlers.                                                                                                                                                                                                                      |
-| order        | object        | No       | Details about an order created for this checkout session.                                                                                                                                                                                                       |
-| ap2          | any           | No       |                                                                                                                                                                                                                                                                 |
+Checkout extended with AP2 mandate support.
+
+| Name         | Type          | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | ------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp          | any           | **Yes**  | UCP metadata for checkout responses.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| id           | string        | **Yes**  | Unique identifier of the checkout session.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| line_items   | Array[object] | **Yes**  | List of line items being checked out.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| buyer        | object        | No       | Representation of the buyer.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| context      | object        | No       | Provisional buyer signals for relevance and localization—not authoritative data. Businesses SHOULD use these values when verified inputs (e.g., shipping address) are absent, and MAY ignore or down-rank them if inconsistent with higher-confidence signals (authenticated account, risk detection) or regulatory constraints (export controls). Eligibility and policy enforcement MUST occur at checkout time using binding transaction data. Context SHOULD be non-identifying and can be disclosed progressively—coarse signals early, finer resolution as the session progresses. Higher-resolution data (shipping address, billing address) supersedes context. |
+| signals      | object        | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace.                                                                                                                                                                                                                                                                 |
+| attribution  | object        | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| status       | string        | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled`                                                                                                                                                                                                                                                                                                                                                                                                         |
+| currency     | string        | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| totals       | Array[any]    | **Yes**  | Different cart totals.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| messages     | Array[object] | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| links        | Array[object] | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| expires_at   | string        | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| continue_url | string        | No       | URL for checkout handoff and session recovery. MUST be provided when status is requires_escalation. See specification for format and availability requirements.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| payment      | object        | No       | Payment configuration containing handlers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| order        | object        | No       | Details about an order created for this checkout session.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ap2          | any           | No       |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Example Response:**
 
@@ -269,6 +274,8 @@ The business trusts the Credential Issuer (Bank) and verifies the user's Key Bin
 ### Step 3: Submission (`complete_checkout`)
 
 Once the mandates are generated, the platform submits them in the completion request:
+
+AP2 extension data including checkout mandate.
 
 | Name             | Type   | Required | Description                                      |
 | ---------------- | ------ | -------- | ------------------------------------------------ |
@@ -350,11 +357,15 @@ The business passes the `token` (composite object) to their Payment Handler / PS
 
 JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response body (excluding ap2 field). Format: `<base64url-header>..<base64url-signature>`. The header MUST contain 'alg' (ES256/ES384/ES512) and 'kid' claims. The signature covers both the header and JCS-canonicalized checkout payload.
 
+JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response body (excluding ap2 field). Format: `<base64url-header>..<base64url-signature>`. The header MUST contain 'alg' (ES256/ES384/ES512) and 'kid' claims. The signature covers both the header and JCS-canonicalized checkout payload.
+
 **Pattern:** `^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$`
 
 ### AP2 Checkout Response
 
 The `ap2` object included in checkout responses.
+
+AP2 extension data including merchant authorization.
 
 | Name                   | Type   | Required | Description                                                |
 | ---------------------- | ------ | -------- | ---------------------------------------------------------- |
@@ -364,17 +375,23 @@ The `ap2` object included in checkout responses.
 
 SD-JWT+kb credential in `ap2.checkout_mandate`. Proving user authorization for the checkout. Contains the full checkout including `ap2.merchant_authorization`.
 
+SD-JWT+kb credential in `ap2.checkout_mandate`. Proving user authorization for the checkout. Contains the full checkout including `ap2.merchant_authorization`.
+
 **Pattern:** `^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+(~[A-Za-z0-9_-]+)*$`
 
 ### AP2 Complete Request
 
 The `ap2` object included in COMPLETE checkout requests.
 
+AP2 extension data including checkout mandate.
+
 | Name             | Type   | Required | Description                                      |
 | ---------------- | ------ | -------- | ------------------------------------------------ |
 | checkout_mandate | string | No       | SD-JWT+kb proving user authorized this checkout. |
 
 ### Error Codes
+
+Error codes specific to AP2 mandate verification.
 
 Error codes specific to AP2 mandate verification.
 

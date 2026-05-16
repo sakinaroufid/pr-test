@@ -2,7 +2,7 @@
 
 ## Overview
 
-Discount extension allows businesses to indicate that they support discount codes on checkout sessions, and specifies how the discount codes are to be shared between the platform and the business.
+Discount extension allows businesses to indicate that they support discount codes on cart and checkout sessions, and specifies how the discount codes are to be shared between the platform and the business.
 
 **Key features:**
 
@@ -13,23 +13,23 @@ Discount extension allows businesses to indicate that they support discount code
 
 **Dependencies:**
 
-- Checkout Capability
+- Cart Capability or Checkout Capability
 
 ## Discovery
 
-Businesses advertise discount support in their profile:
+Businesses advertise discount support in their profile. The capability can extend cart, checkout, or both:
 
 ```json
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "capabilities": {
       "dev.ucp.shopping.discount": [
         {
-          "version": "2026-01-11",
-          "extends": "dev.ucp.shopping.checkout",
-          "spec": "https://ucp.dev/specification/discount",
-          "schema": "https://ucp.dev/schemas/shopping/discount.json"
+          "version": "draft",
+          "extends": ["dev.ucp.shopping.cart", "dev.ucp.shopping.checkout"],
+          "spec": "https://ucp.dev/draft/specification/discount",
+          "schema": "https://ucp.dev/draft/schemas/shopping/discount.json"
         }
       ]
     }
@@ -37,11 +37,15 @@ Businesses advertise discount support in their profile:
 }
 ```
 
+Businesses MAY advertise discount support for cart only, checkout only, or both. Platforms SHOULD check which resources are extended before submitting discount codes.
+
 ## Schema
 
-When this capability is active, checkout is extended with a `discounts` object.
+When this capability is active, cart and/or checkout are extended with a `discounts` object.
 
 ### Discounts Object
+
+Discount codes input and applied discounts output.
 
 | Name    | Type          | Required | Description                                                                                                |
 | ------- | ------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
@@ -50,26 +54,32 @@ When this capability is active, checkout is extended with a `discounts` object.
 
 ### Applied Discount
 
-| Name        | Type          | Required | Description                                                                                                                      |
-| ----------- | ------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| code        | string        | No       | The discount code. Omitted for automatic discounts.                                                                              |
-| title       | string        | **Yes**  | Human-readable discount name (e.g., 'Summer Sale 20% Off').                                                                      |
-| amount      | integer       | **Yes**  | Total discount amount in minor (cents) currency units.                                                                           |
-| automatic   | boolean       | No       | True if applied automatically by merchant rules (no code required).                                                              |
-| method      | string        | No       | Allocation method. 'each' = applied independently per item. 'across' = split proportionally by value. **Enum:** `each`, `across` |
-| priority    | integer       | No       | Stacking order for discount calculation. Lower numbers applied first (1 = first).                                                |
-| allocations | Array[object] | No       | Breakdown of where this discount was allocated. Sum of allocation amounts equals total amount.                                   |
+A discount that was successfully applied.
+
+| Name        | Type          | Required | Description                                                                                                                                                                        |
+| ----------- | ------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| code        | string        | No       | The discount code. Omitted for automatic discounts.                                                                                                                                |
+| title       | string        | **Yes**  | Human-readable discount name (e.g., 'Summer Sale 20% Off').                                                                                                                        |
+| amount      | integer       | **Yes**  | Total discount amount in ISO 4217 minor units.                                                                                                                                     |
+| automatic   | boolean       | No       | True if applied automatically by merchant rules (no code required).                                                                                                                |
+| method      | string        | No       | Allocation method. 'each' = applied independently per item. 'across' = split proportionally by value. **Enum:** `each`, `across`                                                   |
+| priority    | integer       | No       | Stacking order for discount calculation. Lower numbers applied first (1 = first).                                                                                                  |
+| provisional | boolean       | No       | True if this discount requires additional verification.                                                                                                                            |
+| eligibility | string        | No       | The eligibility claim accepted by the Business for this discount. Corresponds to a value from context.eligibility. Omitted for code-based and non-eligibility automatic discounts. |
+| allocations | Array[object] | No       | Breakdown of where this discount was allocated. Sum of allocation amounts equals total amount.                                                                                     |
 
 ### Allocation
+
+Breakdown of how a discount amount was allocated to a specific target.
 
 | Name   | Type    | Required | Description                                                                       |
 | ------ | ------- | -------- | --------------------------------------------------------------------------------- |
 | path   | string  | **Yes**  | JSONPath to the allocation target (e.g., '$.line_items[0]', '$.totals.shipping'). |
-| amount | integer | **Yes**  | Amount allocated to this target in minor (cents) currency units.                  |
+| amount | integer | **Yes**  | Amount allocated to this target in ISO 4217 minor units.                          |
 
 ## Allocation Details
 
-The `applied` array explains how discounts were calculated and distributed.
+The `applied` array explains how discounts were calculated and distributed. The `applied[].amount` describes the magnitude of the applied discount (always positive); the corresponding `totals[]` entry amount represents its signed effect on the receipt (negative for discounts).
 
 ### Allocation Method
 
@@ -108,7 +118,7 @@ This enables platforms to explain exactly how much each discount contributed to 
 
 ## Operations
 
-Discount codes are submitted via standard checkout create/update operations.
+Discount codes are submitted via standard cart or checkout create/update operations. The same semantics apply to both resources.
 
 **Request behavior:**
 
@@ -120,7 +130,9 @@ Discount codes are submitted via standard checkout create/update operations.
 
 - `discounts.applied` contains all active discounts (code-based + automatic)
 - Rejected codes communicated via `messages[]` (see below)
-- Discount amounts reflected in `totals[]` and `line_items[].discount`
+- Discount amounts reflected in `totals[]` and `line_items[].totals[]`
+
+**Cart-to-checkout continuity:** When a cart is converted to a checkout via the cart capability's `cart_id` field, businesses MUST carry forward any discount codes that were applied to the cart. Codes that are no longer valid at checkout time (e.g., expired, ineligible) SHOULD be communicated via `messages[]` using standard rejection codes.
 
 ## Rejected Codes
 
@@ -161,9 +173,80 @@ Businesses may apply discounts automatically based on cart contents, customer se
 - Cannot be removed by the platform
 - Surfaced for transparency (platform can explain to user why discount was applied)
 
+## Eligibility Claims
+
+Eligibility claims are buyer claims about eligible benefits (see [Context](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#context)) such as loyalty membership, payment instrument perks, and similar. When the discount extension is active, Businesses that choose to accept eligibility claims **MUST** surface their effect on pricing as provisional discounts in the `applied` array. Platforms **MUST** display provisional discounts to the buyer.
+
+### Discount Behavior
+
+Platforms send buyer claims via `context.eligibility` on cart or checkout requests (see [Context](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#context)). When a Business recognizes a claim and it affects pricing, it **MUST** surface a corresponding provisional discount in the `discounts.applied` array. This gives the Platform structured attribution to display to the buyer.
+
+Eligibility-triggered discounts use the following fields:
+
+| Field         | Value                      | Purpose                             |
+| ------------- | -------------------------- | ----------------------------------- |
+| `automatic`   | `true`                     | No code required                    |
+| `provisional` | `true`                     | Requires verification at completion |
+| `eligibility` | `"com.example.store_card"` | The accepted claim                  |
+| `code`        | *(omitted)*                | Not code-based                      |
+
+Standard `priority`, `method`, and `allocations` fields apply for stacking with other discounts.
+
+### Verification at Checkout
+
+Discounts from accepted but unverified claims carry `provisional: true`. Provisional discounts remain until the claim is verified, rescinded, or replaced during the session. At checkout completion, all remaining provisional claims **MUST** be resolved (see [Eligibility Verification at Completion](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#eligibility-verification-at-completion)).
+
+### Example: Provisional Discount with Attribution
+
+Building on the store card example from [Eligibility Verification at Completion](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#eligibility-verification-at-completion), the discount extension provides structured attribution. The Platform claims a store card benefit; the Business surfaces the provisional discount with full stacking and allocation details:
+
+```json
+{
+  "context": {
+    "eligibility": ["com.example.store_card"]
+  },
+  "line_items": [
+    {
+      "item": {
+        "id": "prod_shirt"
+      },
+      "quantity": 2
+    }
+  ]
+}
+```
+
+```json
+{
+  "discounts": {
+    "applied": [
+      {
+        "title": "Store Card 5% Off",
+        "amount": 250,
+        "automatic": true,
+        "provisional": true,
+        "eligibility": "com.example.store_card",
+        "priority": 1,
+        "method": "each",
+        "allocations": [
+          {"path": "$.line_items[0]", "amount": 250}
+        ]
+      }
+    ]
+  },
+  "totals": [
+    {"type": "subtotal", "display_text": "Subtotal", "amount": 5000},
+    {"type": "items_discount", "display_text": "Discounts", "amount": -250},
+    {"type": "total", "display_text": "Total", "amount": 4750}
+  ]
+}
+```
+
+The Platform can now render: "Store Card 5% Off: -$2.50 *(verified at purchase)*" with full confidence in the attribution, amount, and allocation.
+
 ## Impact on Line Items and Totals
 
-Applied discounts are reflected in the core checkout fields using two distinct total types:
+Applied discounts are reflected in the core cart or checkout fields using two distinct total types:
 
 | Total Type       | When to Use                                               |
 | ---------------- | --------------------------------------------------------- |
@@ -174,22 +257,82 @@ Applied discounts are reflected in the core checkout fields using two distinct t
 
 | Discount Type        | Where Reflected                            |
 | -------------------- | ------------------------------------------ |
-| Line-item discount   | `line_items[].discount` + `items_discount` |
-| Order-level discount | `totals[]` with `type: "discount"`         |
+| Line-item discount   | `line_items[].totals[type=items_discount]` |
+| Order-level discount | `totals[type=discount]`                    |
 
-**Invariant:** `totals[type=items_discount].amount` equals `sum(line_items[].discount)`.
+**Invariant:** `totals[type=items_discount].amount` equals `sum(line_items[].totals[type=items_discount].amount)`.
 
-The `discounts.applied` array shows **what** was applied. The `totals[]` and `line_items[].discount` show **where** and **how much**.
+The `discounts.applied` array shows **what** was applied. The `totals[]` and `line_items[].totals[]` show **where** and **how much**.
 
-**Amount convention:** All discount amounts are positive integers in minor currency units. When presenting totals to users, display discount types as subtractive (e.g., "-$13.99").
+**Amount convention:** Discount amounts in `discounts.applied` are positive integers (the value of the discount). Discount entries in `totals[]` are negative (the effect on the receipt) — the sign is schema-enforced.
 
 ## Examples
+
+### Cart with discount codes
+
+Discount codes applied during cart exploration. The cart response includes estimated discount amounts, giving the buyer visibility into savings before proceeding to checkout.
+
+```json
+{
+  "line_items": [
+    {
+      "item": {
+        "id": "prod_1",
+      },
+      "quantity": 2
+    }
+  ],
+  "discounts": {
+    "codes": ["SUMMER20"]
+  }
+}
+```
+
+```json
+{
+  "id": "cart_abc123",
+  "line_items": [
+    {
+      "id": "li_1",
+      "item": {
+        "id": "prod_1",
+        "title": "T-Shirt",
+        "price": 2000
+      },
+      "quantity": 2,
+      "totals": [
+        {"type": "subtotal", "amount": 4000},
+        {"type": "items_discount", "amount": -800},
+        {"type": "total", "amount": 3200}
+      ]
+    }
+  ],
+  "discounts": {
+    "codes": ["SUMMER20"],
+    "applied": [
+      {
+        "code": "SUMMER20",
+        "title": "Summer Sale 20% Off",
+        "amount": 800,
+        "method": "each",
+        "allocations": [
+          {"path": "$.line_items[0]", "amount": 800}
+        ]
+      }
+    ]
+  },
+  "currency": "USD",
+  "totals": [
+    {"type": "subtotal", "display_text": "Subtotal", "amount": 4000},
+    {"type": "items_discount", "display_text": "Item Discounts", "amount": -800},
+    {"type": "total", "display_text": "Estimated Total", "amount": 3200}
+  ]
+}
+```
 
 ### Order-level discount
 
 A flat discount applied to the order total. No allocations—the discount applies to the order as a whole and uses `type: "discount"` in totals.
-
-**Request:**
 
 ```json
 {
@@ -198,8 +341,6 @@ A flat discount applied to the order total. No allocations—the discount applie
   }
 }
 ```
-
-**Response:**
 
 ```json
 {
@@ -215,7 +356,7 @@ A flat discount applied to the order total. No allocations—the discount applie
   },
   "totals": [
     {"type": "subtotal", "display_text": "Subtotal", "amount": 5000},
-    {"type": "discount", "display_text": "Order Discount", "amount": 1000},
+    {"type": "discount", "display_text": "Order Discount", "amount": -1000},
     {"type": "total", "display_text": "Total", "amount": 4000}
   ]
 }
@@ -225,8 +366,6 @@ A flat discount applied to the order total. No allocations—the discount applie
 
 This example shows both discount types: a per-item discount (20% off) allocated to line items, and an automatic shipping discount at the order level.
 
-**Request:**
-
 ```json
 {
   "discounts": {
@@ -235,8 +374,6 @@ This example shows both discount types: a per-item discount (20% off) allocated 
 }
 ```
 
-**Response:**
-
 ```json
 {
   "line_items": [
@@ -244,13 +381,13 @@ This example shows both discount types: a per-item discount (20% off) allocated 
       "id": "li_1",
       "item": {
         "id": "prod_1",
-        "quantity": 2,
         "title": "T-Shirt",
         "price": 2000
       },
+      "quantity": 2,
       "totals": [
         {"type": "subtotal", "amount": 4000},
-        {"type": "items_discount", "amount": 800},
+        {"type": "items_discount", "amount": -800},
         {"type": "total", "amount": 3200}
       ]
     }
@@ -275,8 +412,8 @@ This example shows both discount types: a per-item discount (20% off) allocated 
   },
   "totals": [
     {"type": "subtotal", "display_text": "Subtotal", "amount": 4000},
-    {"type": "items_discount", "display_text": "Item Discounts", "amount": 800},
-    {"type": "discount", "display_text": "Order Discounts", "amount": 599},
+    {"type": "items_discount", "display_text": "Item Discounts", "amount": -800},
+    {"type": "discount", "display_text": "Order Discounts", "amount": -599},
     {"type": "fulfillment", "display_text": "Shipping", "amount": 0},
     {"type": "total", "display_text": "Total", "amount": 2601}
   ]
@@ -287,8 +424,6 @@ This example shows both discount types: a per-item discount (20% off) allocated 
 
 When a discount code cannot be applied, the rejection is communicated via the `messages[]` array. The code still appears in `discounts.codes` (echoed back) but not in `discounts.applied`.
 
-**Request:**
-
 ```json
 {
   "discounts": {
@@ -296,8 +431,6 @@ When a discount code cannot be applied, the rejection is communicated via the `m
   }
 }
 ```
-
-**Response:**
 
 ```json
 {
@@ -313,7 +446,7 @@ When a discount code cannot be applied, the rejection is communicated via the `m
   },
   "totals": [
     {"type": "subtotal", "display_text": "Subtotal", "amount": 5000},
-    {"type": "discount", "display_text": "Order Discount", "amount": 1000},
+    {"type": "discount", "display_text": "Order Discount", "amount": -1000},
     {"type": "total", "display_text": "Total", "amount": 4000}
   ],
   "messages": [
@@ -331,32 +464,34 @@ When a discount code cannot be applied, the rejection is communicated via the `m
 
 Multiple discounts applied with full allocation breakdown:
 
-**Response:**
-
 ```json
 {
   "line_items": [
     {
       "id": "li_1",
       "item": {
+        "id": "prod_1",
         "title": "T-Shirt",
         "price": 6000
       },
+      "quantity": 1,
       "totals": [
         {"type": "subtotal", "amount": 6000},
-        {"type": "items_discount", "amount": 1500},
+        {"type": "items_discount", "amount": -1500},
         {"type": "total", "amount": 4500}
       ]
     },
     {
       "id": "li_2",
       "item": {
+        "id": "prod_2",
         "title": "Socks",
         "price": 4000
       },
+      "quantity": 1,
       "totals": [
         {"type": "subtotal", "amount": 4000},
-        {"type": "items_discount", "amount": 1000},
+        {"type": "items_discount", "amount": -1000},
         {"type": "total", "amount": 3000}
       ]
     }
@@ -390,7 +525,7 @@ Multiple discounts applied with full allocation breakdown:
   },
   "totals": [
     {"type": "subtotal", "display_text": "Subtotal", "amount": 10000},
-    {"type": "items_discount", "display_text": "Item Discounts", "amount": 2500},
+    {"type": "items_discount", "display_text": "Item Discounts", "amount": -2500},
     {"type": "total", "display_text": "Total", "amount": 7500}
   ]
 }

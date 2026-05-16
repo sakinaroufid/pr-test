@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "UCP Shopping Service",
-    "version": "2026-02-28",
-    "description": "Canonical REST interface for UCP Shopping service. Schema references are logical pointers - actual payload shape is determined by negotiated capabilities.\n\n**Endpoint Resolution:** This spec defines operations only. The base URL MUST be obtained from the merchant's discovery profile at `/.well-known/ucp` under `services[\"dev.ucp.shopping\"][transport=rest].endpoint`. The `{endpoint}` server variable below is a placeholder for tooling compatibility."
+    "description": "Canonical REST interface for UCP Shopping service. Schema references are logical pointers - actual payload shape is determined by negotiated capabilities.\n\n**Endpoint Resolution:** This spec defines operations only. The base URL MUST be obtained from the merchant's discovery profile at `/.well-known/ucp` under `services[\"dev.ucp.shopping\"][transport=rest].endpoint`. The `{endpoint}` server variable below is a placeholder for tooling compatibility.",
+    "version": "2026-05-16"
   },
   "servers": [
     {
@@ -91,7 +91,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/checkout"
+                  "$ref": "#/components/schemas/checkout_response"
                 }
               }
             }
@@ -161,7 +161,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/checkout"
+                  "$ref": "#/components/schemas/checkout_response"
                 }
               }
             }
@@ -240,7 +240,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/checkout"
+                  "$ref": "#/components/schemas/checkout_response"
                 }
               }
             }
@@ -304,22 +304,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/checkout"
-                  },
-                  {
-                    "title": "Risk Signals",
-                    "description": "Optional risk signals for fraud detection.",
-                    "type": "object",
-                    "properties": {
-                      "risk_signals": {
-                        "type": "object",
-                        "description": "Key-value pairs of risk signals."
-                      }
-                    }
-                  }
-                ]
+                "$ref": "#/components/schemas/checkout"
               }
             }
           }
@@ -341,7 +326,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/checkout"
+                  "$ref": "#/components/schemas/checkout_response"
                 }
               }
             }
@@ -417,7 +402,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/checkout"
+                  "$ref": "#/components/schemas/checkout_response"
                 }
               }
             }
@@ -454,6 +439,9 @@
           },
           {
             "$ref": "#/components/parameters/user_agent"
+          },
+          {
+            "$ref": "#/components/parameters/ucp_agent"
           },
           {
             "$ref": "#/components/parameters/content_type"
@@ -495,7 +483,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/cart"
+                  "$ref": "#/components/schemas/cart_response"
                 }
               }
             }
@@ -565,13 +553,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/cart"
+                  "$ref": "#/components/schemas/cart_response"
                 }
               }
             }
-          },
-          "404": {
-            "description": "Cart not found (cancelled, expired, or never existed)"
           }
         }
       },
@@ -647,7 +632,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/cart"
+                  "$ref": "#/components/schemas/cart_response"
                 }
               }
             }
@@ -723,7 +708,300 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/cart"
+                  "$ref": "#/components/schemas/cart_response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/search": {
+      "post": {
+        "operationId": "search_catalog",
+        "summary": "Search Catalog",
+        "description": "Search for products in the business's catalog.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/authorization"
+          },
+          {
+            "$ref": "#/components/parameters/x_api_key"
+          },
+          {
+            "$ref": "#/components/parameters/signature"
+          },
+          {
+            "$ref": "#/components/parameters/signature_input"
+          },
+          {
+            "$ref": "#/components/parameters/content_digest"
+          },
+          {
+            "$ref": "#/components/parameters/request_id"
+          },
+          {
+            "$ref": "#/components/parameters/user_agent"
+          },
+          {
+            "$ref": "#/components/parameters/ucp_agent"
+          },
+          {
+            "$ref": "#/components/parameters/content_type"
+          },
+          {
+            "$ref": "#/components/parameters/accept"
+          },
+          {
+            "$ref": "#/components/parameters/accept_language"
+          },
+          {
+            "$ref": "#/components/parameters/accept_encoding"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/catalog_search_request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/signature"
+              },
+              "Signature-Input": {
+                "$ref": "#/components/headers/signature_input"
+              },
+              "Content-Digest": {
+                "$ref": "#/components/headers/content_digest"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/catalog_search_response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/lookup": {
+      "post": {
+        "operationId": "lookup_catalog",
+        "summary": "Batch Lookup Catalog Items",
+        "description": "Lookup one or more products by ID with explicit market context. Supports batch lookups of multiple items in a single request.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/authorization"
+          },
+          {
+            "$ref": "#/components/parameters/x_api_key"
+          },
+          {
+            "$ref": "#/components/parameters/signature"
+          },
+          {
+            "$ref": "#/components/parameters/signature_input"
+          },
+          {
+            "$ref": "#/components/parameters/content_digest"
+          },
+          {
+            "$ref": "#/components/parameters/request_id"
+          },
+          {
+            "$ref": "#/components/parameters/user_agent"
+          },
+          {
+            "$ref": "#/components/parameters/ucp_agent"
+          },
+          {
+            "$ref": "#/components/parameters/content_type"
+          },
+          {
+            "$ref": "#/components/parameters/accept"
+          },
+          {
+            "$ref": "#/components/parameters/accept_language"
+          },
+          {
+            "$ref": "#/components/parameters/accept_encoding"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/catalog_lookup_request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lookup result",
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/signature"
+              },
+              "Signature-Input": {
+                "$ref": "#/components/headers/signature_input"
+              },
+              "Content-Digest": {
+                "$ref": "#/components/headers/content_digest"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/catalog_lookup_response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/order_id_path"
+        }
+      ],
+      "get": {
+        "operationId": "get_order",
+        "summary": "Get Order",
+        "description": "Get the current state of an order. Returns the full order entity as a current-state snapshot. The business verifies the requesting platform created the checkout that produced this order.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/authorization"
+          },
+          {
+            "$ref": "#/components/parameters/x_api_key"
+          },
+          {
+            "$ref": "#/components/parameters/signature"
+          },
+          {
+            "$ref": "#/components/parameters/signature_input"
+          },
+          {
+            "$ref": "#/components/parameters/request_id"
+          },
+          {
+            "$ref": "#/components/parameters/user_agent"
+          },
+          {
+            "$ref": "#/components/parameters/ucp_agent"
+          },
+          {
+            "$ref": "#/components/parameters/content_type"
+          },
+          {
+            "$ref": "#/components/parameters/accept"
+          },
+          {
+            "$ref": "#/components/parameters/accept_language"
+          },
+          {
+            "$ref": "#/components/parameters/accept_encoding"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order retrieved or business outcome message",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/order_response"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/product": {
+      "post": {
+        "operationId": "get_product",
+        "summary": "Get Product Details",
+        "description": "Retrieve complete product detail by identifier. Returns a singular product with a relevant set of variants, exact pricing, and real-time availability. Supports interactive option selection via `selected` and `preferences` parameters for variant narrowing and availability signals.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/authorization"
+          },
+          {
+            "$ref": "#/components/parameters/x_api_key"
+          },
+          {
+            "$ref": "#/components/parameters/signature"
+          },
+          {
+            "$ref": "#/components/parameters/signature_input"
+          },
+          {
+            "$ref": "#/components/parameters/content_digest"
+          },
+          {
+            "$ref": "#/components/parameters/request_id"
+          },
+          {
+            "$ref": "#/components/parameters/user_agent"
+          },
+          {
+            "$ref": "#/components/parameters/ucp_agent"
+          },
+          {
+            "$ref": "#/components/parameters/content_type"
+          },
+          {
+            "$ref": "#/components/parameters/accept"
+          },
+          {
+            "$ref": "#/components/parameters/accept_language"
+          },
+          {
+            "$ref": "#/components/parameters/accept_encoding"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/catalog_get_product_request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product detail",
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/signature"
+              },
+              "Signature-Input": {
+                "$ref": "#/components/headers/signature_input"
+              },
+              "Content-Digest": {
+                "$ref": "#/components/headers/content_digest"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/catalog_get_product_response"
                 }
               }
             }
@@ -753,6 +1031,12 @@
           },
           {
             "$ref": "#/components/parameters/x_api_key"
+          },
+          {
+            "$ref": "#/components/parameters/webhook_timestamp"
+          },
+          {
+            "$ref": "#/components/parameters/webhook_id"
           }
         ],
         "requestBody": {
@@ -760,29 +1044,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "allOf": [
-                  {
-                    "$ref": "#/components/schemas/order"
-                  },
-                  {
-                    "type": "object",
-                    "required": [
-                      "event_id",
-                      "created_time"
-                    ],
-                    "properties": {
-                      "event_id": {
-                        "type": "string",
-                        "description": "Unique event identifier."
-                      },
-                      "created_time": {
-                        "type": "string",
-                        "format": "date-time",
-                        "description": "Event creation timestamp in RFC 3339 format."
-                      }
-                    }
-                  }
-                ]
+                "$ref": "#/components/schemas/order"
               }
             }
           }
@@ -826,6 +1088,15 @@
         "in": "path",
         "required": true,
         "description": "The unique identifier of the cart.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "order_id_path": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "The unique identifier of the order.",
         "schema": {
           "type": "string"
         }
@@ -947,7 +1218,26 @@
         "schema": {
           "type": "string"
         },
-        "description": "Compression. The client tells the server which content-codings it supports, usually for compression"
+        "description": "Compression. The client tells the server which content-codings it supports, usually for compression."
+      },
+      "webhook_timestamp": {
+        "name": "Webhook-Timestamp",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Webhook event occurrence unix timestamp (seconds since epoch)."
+      },
+      "webhook_id": {
+        "name": "Webhook-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "The unique identifier of a webhook event."
       }
     },
     "headers": {
@@ -977,17 +1267,72 @@
       "checkout": {
         "$ref": "https://ucp.dev/draft/schemas/shopping/checkout.json"
       },
+      "checkout_response": {
+        "oneOf": [
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/checkout.json"
+          },
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/types/error_response.json"
+          }
+        ]
+      },
       "cart": {
         "$ref": "https://ucp.dev/draft/schemas/shopping/cart.json"
       },
+      "cart_response": {
+        "oneOf": [
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/cart.json"
+          },
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/types/error_response.json"
+          }
+        ]
+      },
       "order": {
         "$ref": "https://ucp.dev/draft/schemas/shopping/order.json"
+      },
+      "order_response": {
+        "oneOf": [
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/order.json"
+          },
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/types/error_response.json"
+          }
+        ]
       },
       "payment": {
         "$ref": "https://ucp.dev/draft/schemas/shopping/payment.json"
       },
       "ucp": {
         "$ref": "https://ucp.dev/draft/schemas/ucp.json"
+      },
+      "catalog_search_request": {
+        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_request"
+      },
+      "catalog_search_response": {
+        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_response"
+      },
+      "catalog_lookup_request": {
+        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_request"
+      },
+      "catalog_lookup_response": {
+        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_response"
+      },
+      "catalog_get_product_request": {
+        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/get_product_request"
+      },
+      "catalog_get_product_response": {
+        "oneOf": [
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/get_product_response"
+          },
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/types/error_response.json"
+          }
+        ]
       }
     }
   }

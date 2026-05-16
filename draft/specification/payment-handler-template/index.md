@@ -77,7 +77,7 @@ Businesses advertise support for this handler in their UCP profile's `payment_ha
 
 **Schema URL:** `{schema_url}`
 
-The handler schema defines three config variants for different contexts. See [Payment Handler Guide: Defining the Schema](https://ucp.dev/draft/specification/payment-handler-guide/#defining-the-schema) for the full pattern.
+The handler schema defines three config variants for different contexts. See [Payment Handler Guide: Defining the Schema](https://sakinaroufid.github.io/pr-test/draft/specification/payment-handler-guide/#defining-the-schema) for the full pattern.
 
 | Config Variant    | Context            | Purpose                             |
 | ----------------- | ------------------ | ----------------------------------- |
@@ -102,7 +102,7 @@ The handler schema defines three config variants for different contexts. See [Pa
 ```json
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "payment_handlers": {
       "{handler_name}": [
         {
@@ -173,7 +173,7 @@ Platforms advertise support for this handler in their UCP profile's `payment_han
 ```json
 {
   "ucp": {
-    "version": "2026-01-11",
+    "version": "draft",
     "payment_handlers": {
       "{handler_name}": [
         {
@@ -265,8 +265,8 @@ Content-Type: application/json
       }
     ]
   },
-  "risk_signals": {
-    // risk signal objects here
+  "signals": {
+    // Platform-observed signals (buyer connection and device)
   }
 }
 ```

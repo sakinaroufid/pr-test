@@ -4,7 +4,7 @@ This specification defines how UCP messages are cryptographically signed to ensu
 
 ## Overview
 
-This specification defines how to sign and verify UCP messages using [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) HTTP Message Signatures. For UCP's identity model, supported authentication mechanisms, and key discovery protocol, see [Identity & Authentication](https://ucp.dev/draft/specification/overview/#identity--authentication).
+This specification defines how to sign and verify UCP messages using [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) HTTP Message Signatures. For UCP's identity model, supported authentication mechanisms, and key discovery protocol, see [Identity & Authentication](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#identity-authentication).
 
 HTTP Message Signatures protect against:
 
@@ -18,29 +18,29 @@ HTTP Message Signatures protect against:
 UCP uses HTTP Message Signatures ([RFC 9421](https://www.rfc-editor.org/rfc/rfc9421)) for all HTTP-based transports:
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                     SHARED FOUNDATION                           │
-├─────────────────────────────────────────────────────────────────┤
-│  Signature Format: RFC 9421 (HTTP Message Signatures)           │
-│  Body Digest: RFC 9530 (Content-Digest, raw bytes)              │
-│  Algorithms: ES256 (required), ES384 (optional)                 │
-│  Key Format: JWK (RFC 7517)                                     │
-│  Key Discovery: signing_keys[] in /.well-known/ucp              │
-│  Replay Protection: idempotency-key (business layer)            │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     HTTP TRANSPORTS                             │
-├─────────────────────────────────────────────────────────────────┤
-│  REST API: Standard HTTP requests                               │
-│  MCP: Streamable HTTP transport (JSON-RPC over HTTP)            │
-├─────────────────────────────────────────────────────────────────┤
-│  Headers:                                                       │
-│    Signature-Input    (describes signed components)             │
-│    Signature          (contains signature value)                │
-│    Content-Digest     (body hash, raw bytes)                    │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+|                     SHARED FOUNDATION                           |
++-----------------------------------------------------------------+
+|  Signature Format: RFC 9421 (HTTP Message Signatures)           |
+|  Body Digest: RFC 9530 (Content-Digest, raw bytes)              |
+|  Algorithms: ES256 (required), ES384 (optional)                 |
+|  Key Format: JWK (RFC 7517)                                     |
+|  Key Discovery: signing_keys[] in /.well-known/ucp              |
+|  Replay Protection: idempotency-key (business layer)            |
++-----------------------------------------------------------------+
+                              |
+                              v
++-----------------------------------------------------------------+
+|                     HTTP TRANSPORTS                             |
++-----------------------------------------------------------------+
+|  REST API: Standard HTTP requests                               |
+|  MCP: Streamable HTTP transport (JSON-RPC over HTTP)            |
++-----------------------------------------------------------------+
+|  Headers:                                                       |
+|    Signature-Input    (describes signed components)             |
+|    Signature          (contains signature value)                |
+|    Content-Digest     (body hash, raw bytes)                    |
++-----------------------------------------------------------------+
 ```
 
 **Note:** UCP specifies streamable HTTP for MCP transport, replacing SSE-based transports. This allows the same RFC 9421 signature mechanism to apply uniformly across all UCP transports.
@@ -103,7 +103,7 @@ Public keys **MUST** be represented using **JSON Web Key (JWK)** format as defin
 
 ### Key Discovery
 
-Public keys are published in the `signing_keys` array of the party's UCP profile at `/.well-known/ucp`. For the complete key discovery protocol, profile trust model, and profile fetch requirements, see [Identity & Authentication — Key Discovery](https://ucp.dev/draft/specification/overview/#key-discovery).
+Public keys are published in the `signing_keys` array of the party's UCP profile at `/.well-known/ucp`. For the complete key discovery protocol, profile trust model, and profile fetch requirements, see [Identity & Authentication — Key Discovery](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#key-discovery).
 
 ### Key Rotation
 
@@ -140,7 +140,7 @@ For HTTP REST transport, UCP uses [RFC 9421 (HTTP Message Signatures)](https://w
 
 \* Required when request/response has a body
 
-`Content-Digest` follows [RFC 9530](https://www.rfc-editor.org/rfc/rfc9530) and hashes the raw body bytes. This binds the message body to the signature without requiring JSON canonicalization. Implementations **MUST** use `sha-256`. For durable artifacts requiring canonicalization, see [AP2 Mandates - Canonicalization](https://ucp.dev/draft/specification/ap2-mandates/#canonicalization).
+`Content-Digest` follows [RFC 9530](https://www.rfc-editor.org/rfc/rfc9530) and hashes the raw body bytes. This binds the message body to the signature without requiring JSON canonicalization. Implementations **MUST** use `sha-256`. For durable artifacts requiring canonicalization, see [AP2 Mandates - Canonicalization](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/#canonicalization).
 
 **Intermediary Warning:** Proxies, API gateways, and other intermediaries **MUST NOT** re-serialize JSON bodies, as this would invalidate the signature. The `Content-Digest` is computed over raw bytes; any modification breaks verification.
 
@@ -159,7 +159,13 @@ For HTTP REST transport, UCP uses [RFC 9421 (HTTP Message Signatures)](https://w
 | `content-digest`  | Cond.†      | Body digest (if body present)           |
 | `content-type`    | Cond.†      | Content-Type (if body present)          |
 
-\* Required if request has query parameters * *Required if `UCP-Agent` header is present \**\* Required for POST, PUT, DELETE, PATCH † Required if request has a body
+\* Required if request has query parameters
+
+\*\* Required if `UCP-Agent` header is present
+
+\*\*\* Required for POST, PUT, DELETE, PATCH
+
+† Required if request has a body
 
 **Signature Generation:**
 
@@ -476,7 +482,7 @@ The JSON-RPC message is the HTTP body. `Content-Digest` binds it to the signatur
 
 ## Error Handling
 
-Signature verification errors use standard UCP error codes. See [Error Handling](https://ucp.dev/draft/specification/overview/#error-handling) in the specification overview for the complete error code registry and transport bindings.
+Signature verification errors use standard UCP error codes. See [Error Handling](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling) in the specification overview for the complete error code registry and transport bindings.
 
 **Signature-specific errors:**
 

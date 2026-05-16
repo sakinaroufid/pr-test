@@ -1,6 +1,6 @@
 # Tokenization Guide
 
-**OpenAPI:** [Tokenization API](https://ucp.dev/handlers/tokenization/openapi.json)
+**OpenAPI:** [Tokenization API](/pr-test/draft/handlers/tokenization/openapi.json)
 
 ## Overview
 
@@ -10,11 +10,11 @@ This guide is for **implementers building tokenization payment handlers**. It de
 
 We offer a range of examples to utilize forms of tokenization in UCP:
 
-| Example                                                                                                            | Use Case                                            |
-| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| [Processor Tokenizer](https://ucp.dev/draft/specification/examples/processor-tokenizer-payment-handler/index.md)   | Business or PSP runs tokenization and processing    |
-| [Platform Tokenizer](https://ucp.dev/draft/specification/examples/platform-tokenizer-payment-handler/index.md)     | Platform tokenizes credentials for businesses/PSPs  |
-| [Encrypted Credential Handler](https://ucp.dev/draft/specification/examples/encrypted-credential-handler/index.md) | Platform encrypts credentials instead of tokenizing |
+| Example                                                                                                                                   | Use Case                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| [Processor Tokenizer](https://sakinaroufid.github.io/pr-test/draft/specification/examples/processor-tokenizer-payment-handler/index.md)   | Business or PSP runs tokenization and processing    |
+| [Platform Tokenizer](https://sakinaroufid.github.io/pr-test/draft/specification/examples/platform-tokenizer-payment-handler/index.md)     | Platform tokenizes credentials for businesses/PSPs  |
+| [Encrypted Credential Handler](https://sakinaroufid.github.io/pr-test/draft/specification/examples/encrypted-credential-handler/index.md) | Platform encrypts credentials instead of tokenizing |
 
 ______________________________________________________________________
 
@@ -75,7 +75,7 @@ All tokenization requests require a `binding` object that ties the token to a sp
 | `checkout_id` | Yes         | The checkout session this token is valid for                                                    |
 | `identity`    | Conditional | The participant identity to bind to; required when caller acts on behalf of another participant |
 
-The tokenizer **MUST** verify binding matches on `/detokenize`. See [Binding Schema](https://ucp.dev/schemas/shopping/types/binding.json).
+The tokenizer **MUST** verify binding matches on `/detokenize`. See [Binding Schema](/pr-test/draft/schemas/shopping/types/binding.json).
 
 ______________________________________________________________________
 
@@ -153,7 +153,7 @@ Authorization: Bearer {caller_access_token}
 
 **Note:** `binding.identity` is omitted when the authenticated caller is the binding target. Include it when acting on behalf of another participant (e.g., PSP detokenizing for business).
 
-See the full [OpenAPI specification](https://ucp.dev/handlers/tokenization/openapi.json) for complete request/response schemas.
+See the full [OpenAPI specification](/pr-test/draft/handlers/tokenization/openapi.json) for complete request/response schemas.
 
 ______________________________________________________________________
 
@@ -190,7 +190,7 @@ When publishing your handler, your specification document **MUST** include:
 
 ```markdown
 **Handler Name:** `com.acme.tokenization_payment`
-**OpenAPI:** [Tokenization API](https://ucp.dev/handlers/tokenization/openapi.json)
+**OpenAPI:** [Tokenization API](site:handlers/tokenization/openapi.json)
 
 | Environment | Base URL                           |
 | :---------- | :--------------------------------- |
@@ -231,17 +231,17 @@ ______________________________________________________________________
 
 ## References
 
-| Resource                | URL                                                                   |
-| ----------------------- | --------------------------------------------------------------------- |
-| Tokenization OpenAPI    | `https://ucp.dev/handlers/tokenization/openapi.json`                  |
-| Identity Schema         | `https://ucp.dev/schemas/shopping/types/payment_identity.json`        |
-| Binding Schema          | `https://ucp.dev/schemas/shopping/types/binding.json`                 |
-| Token Credential Schema | `https://ucp.dev/schemas/shopping/types/token_credential.json`        |
-| Card Instrument Schema  | `https://ucp.dev/schemas/shopping/types/card_payment_instrument.json` |
+| Resource                | URL                                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Tokenization OpenAPI    | [handlers/tokenization/openapi.json](/pr-test/draft/handlers/tokenization/openapi.json)                                   |
+| Identity Schema         | [schemas/shopping/types/payment_identity.json](/pr-test/draft/schemas/shopping/types/payment_identity.json)               |
+| Binding Schema          | [schemas/shopping/types/binding.json](/pr-test/draft/schemas/shopping/types/binding.json)                                 |
+| Token Credential Schema | [schemas/shopping/types/token_credential.json](/pr-test/draft/schemas/shopping/types/token_credential.json)               |
+| Card Instrument Schema  | [schemas/shopping/types/card_payment_instrument.json](/pr-test/draft/schemas/shopping/types/card_payment_instrument.json) |
 
 ______________________________________________________________________
 
 ## See Also
 
-- **[Encrypted Credential Handler](https://ucp.dev/draft/specification/examples/encrypted-credential-handler/index.md)** — Alternative pattern using encryption instead of tokenize/detokenize round-trips
-- **[AP2 Mandates Extension](https://ucp.dev/draft/specification/ap2-mandates/index.md)** — Add cryptographic proof of checkout agreement for PSP verification
+- **[Encrypted Credential Handler](https://sakinaroufid.github.io/pr-test/draft/specification/examples/encrypted-credential-handler/index.md)** — Alternative pattern using encryption instead of tokenize/detokenize round-trips
+- **[AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md)** — Add cryptographic proof of checkout agreement for PSP verification

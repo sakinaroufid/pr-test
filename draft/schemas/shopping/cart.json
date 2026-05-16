@@ -3,7 +3,7 @@
   "$id": "https://ucp.dev/draft/schemas/shopping/cart.json",
   "name": "dev.ucp.shopping.cart",
   "title": "Cart",
-  "description": "Shopping cart with estimated pricing before checkout. Lightweight pre-purchase exploration with no payment info or complex status states. Cart exists (200) or doesn't (404).",
+  "description": "Shopping cart with estimated pricing before checkout. Lightweight pre-purchase exploration with no payment info or complex status states.",
   "$defs": {
     "checkout": {
       "title": "Checkout with Cart",
@@ -69,6 +69,20 @@
         "update": "optional"
       }
     },
+    "signals": {
+      "$ref": "https://ucp.dev/draft/schemas/shopping/types/signals.json",
+      "ucp_request": {
+        "create": "optional",
+        "update": "optional"
+      }
+    },
+    "attribution": {
+      "$ref": "https://ucp.dev/draft/schemas/shopping/types/attribution.json",
+      "ucp_request": {
+        "create": "optional",
+        "update": "optional"
+      }
+    },
     "buyer": {
       "$ref": "https://ucp.dev/draft/schemas/shopping/types/buyer.json",
       "description": "Optional buyer information for personalized estimates.",
@@ -83,10 +97,7 @@
       "ucp_request": "omit"
     },
     "totals": {
-      "type": "array",
-      "items": {
-        "$ref": "https://ucp.dev/draft/schemas/shopping/types/total.json"
-      },
+      "$ref": "https://ucp.dev/draft/schemas/shopping/types/totals.json",
       "description": "Estimated cost breakdown. May be partial if shipping/tax not yet calculable.",
       "ucp_request": "omit"
     },
@@ -119,5 +130,5 @@
       "ucp_request": "omit"
     }
   },
-  "version": "2026-02-28"
+  "version": "2026-05-16"
 }

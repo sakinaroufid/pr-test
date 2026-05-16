@@ -1,6 +1,6 @@
 # Cart Capability - MCP Binding
 
-This document specifies the Model Context Protocol (MCP) binding for the [Cart Capability](https://ucp.dev/draft/specification/cart/index.md).
+This document specifies the Model Context Protocol (MCP) binding for the [Cart Capability](https://sakinaroufid.github.io/pr-test/draft/specification/cart/index.md).
 
 ## Protocol Fundamentals
 
@@ -11,31 +11,34 @@ Businesses advertise MCP transport availability through their UCP profile at `/.
 ```json
 {
   "ucp": {
-    "version": "2026-01-15",
+    "version": "draft",
     "services": {
-      "dev.ucp.shopping": {
-        "version": "2026-01-15",
-        "spec": "https://ucp.dev/specification/overview",
-        "mcp": {
-          "schema": "https://ucp.dev/services/shopping/mcp.openrpc.json",
+      "dev.ucp.shopping": [
+        {
+          "version": "draft",
+          "spec": "https://ucp.dev/draft/specification/overview",
+          "transport": "mcp",
+          "schema": "https://ucp.dev/draft/services/shopping/mcp.openrpc.json",
           "endpoint": "https://business.example.com/ucp/mcp"
         }
-      }
+      ]
     },
-    "capabilities": [
-      {
-        "name": "dev.ucp.shopping.checkout",
-        "version": "2026-01-11",
-        "spec": "https://ucp.dev/specification/checkout",
-        "schema": "https://ucp.dev/schemas/shopping/checkout.json"
-      },
-      {
-        "name": "dev.ucp.shopping.cart",
-        "version": "2026-01-15",
-        "spec": "https://ucp.dev/specification/cart",
-        "schema": "https://ucp.dev/schemas/shopping/cart.json"
-      }
-    ]
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {
+          "version": "draft",
+          "spec": "https://ucp.dev/draft/specification/checkout",
+          "schema": "https://ucp.dev/draft/schemas/shopping/checkout.json"
+        }
+      ],
+      "dev.ucp.shopping.cart": [
+        {
+          "version": "draft",
+          "spec": "https://ucp.dev/draft/specification/cart",
+          "schema": "https://ucp.dev/draft/schemas/shopping/cart.json"
+        }
+      ]
+    }
   }
 }
 ```
@@ -63,7 +66,7 @@ MCP clients **MUST** include a `meta` object in every request containing protoco
 }
 ```
 
-The `meta["ucp-agent"]` field is **required** on all requests to enable [capability negotiation](https://ucp.dev/draft/specification/overview/#negotiation-protocol). Platforms **MAY** include additional metadata fields.
+The `meta["ucp-agent"]` field is **required** on all requests to enable [capability negotiation](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#negotiation-protocol). Platforms **MAY** include additional metadata fields.
 
 ## Tools
 
@@ -77,40 +80,44 @@ MCP tools separate resource identification from payload data:
 - **Responses:** All responses include `cart.id` as part of the full resource state.
 - **Create:** The `create_cart` operation does not require an `id` in the request, and the response includes the newly assigned `cart.id`.
 
-| Tool          | Operation                                                            | Description            |
-| ------------- | -------------------------------------------------------------------- | ---------------------- |
-| `create_cart` | [Create Cart](https://ucp.dev/draft/specification/cart/#create-cart) | Create a cart session. |
-| `get_cart`    | [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart)       | Get a cart session.    |
-| `update_cart` | [Update Cart](https://ucp.dev/draft/specification/cart/#update-cart) | Update a cart session. |
-| `cancel_cart` | [Cancel Cart](https://ucp.dev/draft/specification/cart/#cancel-cart) | Cancel a cart session. |
+| Tool          | Operation                                                                                   | Description            |
+| ------------- | ------------------------------------------------------------------------------------------- | ---------------------- |
+| `create_cart` | [Create Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#create-cart) | Create a cart session. |
+| `get_cart`    | [Get Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#get-cart)       | Get a cart session.    |
+| `update_cart` | [Update Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#update-cart) | Update a cart session. |
+| `cancel_cart` | [Cancel Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#cancel-cart) | Cancel a cart session. |
 
 ### `create_cart`
 
-Maps to the [Create Cart](https://ucp.dev/draft/specification/cart/#create-cart) operation.
+Maps to the [Create Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#create-cart) operation.
 
 #### Input Schema
 
-| Name       | Type                                                                   | Required | Description                                                                                                                                        |
-| ---------- | ---------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| line_items | Array\[[Line Item](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
-| context    | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)            | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
-| buyer      | [Buyer](https://ucp.dev/draft/specification/cart-mcp/%7B)              | No       | Optional buyer information for personalized estimates.                                                                                             |
+| Name        | Type                                                                    | Required | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| line_items  | Array\[[Line Item](/pr-test/draft/specification/reference/#line-item)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                                                                                                                                                                                                                                                                                |
+| context     | [Context](/pr-test/draft/specification/reference/#context)              | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted.                                                                                                                                                                                                                                                      |
+| signals     | [Signals](/pr-test/draft/specification/reference/#signals)              | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace. |
+| attribution | [Attribution](/pr-test/draft/specification/reference/#attribution)      | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                        |
+| buyer       | [Buyer](/pr-test/draft/specification/reference/#buyer)                  | No       | Optional buyer information for personalized estimates.                                                                                                                                                                                                                                                                                                                                                  |
 
 #### Output Schema
 
-| Name         | Type                                                                            | Required | Description                                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
-| id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
-| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
-| context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
-| buyer        | [Buyer](https://ucp.dev/draft/specification/cart-mcp/%7B)                       | No       | Optional buyer information for personalized estimates.                                                                                             |
-| currency     | string                                                                          | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                         |
-| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\]     | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                       |
-| messages     | Array\[[Message](https://ucp.dev/draft/specification/cart-mcp/%7B)\]            | No       | Validation messages, warnings, or informational notices.                                                                                           |
-| links        | Array\[[Link](https://ucp.dev/draft/specification/cart-mcp/%7B)\]               | No       | Optional merchant links (policies, FAQs).                                                                                                          |
-| continue_url | string                                                                          | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                            |
-| expires_at   | string                                                                          | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                        |
+| Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp          | any                                                                              | **Yes**  | UCP metadata for cart responses. No payment handlers needed pre-checkout.                                                                                                                                                                                                                                                                                                                               |
+| id           | string                                                                           | **Yes**  | Unique cart identifier.                                                                                                                                                                                                                                                                                                                                                                                 |
+| line_items   | Array\[[Line Item Response](/pr-test/draft/specification/reference/#line-item)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                                                                                                                                                                                                                                                                                |
+| context      | [Context](/pr-test/draft/specification/reference/#context)                       | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted.                                                                                                                                                                                                                                                      |
+| signals      | [Signals](/pr-test/draft/specification/reference/#signals)                       | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace. |
+| attribution  | [Attribution](/pr-test/draft/specification/reference/#attribution)               | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                        |
+| buyer        | [Buyer](/pr-test/draft/specification/reference/#buyer)                           | No       | Optional buyer information for personalized estimates.                                                                                                                                                                                                                                                                                                                                                  |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                                                                                                                                                                                                                                                                              |
+| totals       | [Totals](/pr-test/draft/specification/reference/#totals)                         | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                                                                                                                                                                                                                                                                            |
+| messages     | Array\[[Message](/pr-test/draft/specification/reference/#message)\]              | No       | Validation messages, warnings, or informational notices.                                                                                                                                                                                                                                                                                                                                                |
+| links        | Array\[[Link](/pr-test/draft/specification/reference/#link)\]                    | No       | Optional merchant links (policies, FAQs).                                                                                                                                                                                                                                                                                                                                                               |
+| continue_url | string                                                                           | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                                                                                                                                                                                                                                                                                 |
+| expires_at   | string                                                                           | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                                                                                                                                                                                                                                                                             |
 
 #### Example
 
@@ -153,56 +160,74 @@ Maps to the [Create Cart](https://ucp.dev/draft/specification/cart/#create-cart)
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-15",
-          "capabilities": [
-            {
-              "name": "dev.ucp.shopping.checkout",
-              "version": "2026-01-11"
-            },
-            {
-              "name": "dev.ucp.shopping.cart",
-              "version": "2026-01-15"
-            }
-          ]
-        },
-        "id": "cart_abc123",
-        "line_items": [
-          {
-            "id": "li_1",
-            "item": {
-              "id": "item_123",
-              "title": "Red T-Shirt",
-              "price": 2500
-            },
-            "quantity": 2,
-            "totals": [
-              {"type": "subtotal", "amount": 5000},
-              {"type": "total", "amount": 5000}
-            ]
-          }
-        ],
-        "currency": "USD",
-        "totals": [
-          {
-            "type": "subtotal",
-            "amount": 5000
+      "ucp": {
+        "version": "draft",
+        "capabilities": {
+          "dev.ucp.shopping.checkout": [{"version": "draft"}],
+          "dev.ucp.shopping.cart": [{"version": "draft"}]
+        }
+      },
+      "id": "cart_abc123",
+      "line_items": [
+        {
+          "id": "li_1",
+          "item": {
+            "id": "item_123",
+            "title": "Red T-Shirt",
+            "price": 2500
           },
-          {
-            "type": "total",
-            "amount": 5000
-          }
-        ],
-        "continue_url": "https://business.example.com/checkout?cart=cart_abc123",
-        "expires_at": "2026-01-16T12:00:00Z"
-      }
+          "quantity": 2,
+          "totals": [
+            {"type": "subtotal", "amount": 5000},
+            {"type": "total", "amount": 5000}
+          ]
+        }
+      ],
+      "currency": "USD",
+      "totals": [
+        {
+          "type": "subtotal",
+          "amount": 5000
+        },
+        {
+          "type": "total",
+          "amount": 5000
+        }
+      ],
+      "continue_url": "https://business.example.com/checkout?cart=cart_abc123",
+      "expires_at": "2026-01-16T12:00:00Z"
     },
     "content": [
       {
         "type": "text",
-        "text": "{\"cart\":{\"ucp\":{...},\"id\":\"cart_abc123\",...}}"
+        "text": "{\"ucp\":{...},\"id\":\"cart_abc123\",...}"
       }
+    ]
+  }
+}
+```
+
+All items out of stock — no cart resource is created:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "structuredContent": {
+      "ucp": { "version": "2026-01-15", "status": "error" },
+      "messages": [
+        {
+          "type": "error",
+          "code": "out_of_stock",
+          "content": "All requested items are currently out of stock",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
+    },
+    "content": [
+      {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...]}"}
     ]
   }
 }
@@ -210,7 +235,7 @@ Maps to the [Create Cart](https://ucp.dev/draft/specification/cart/#create-cart)
 
 ### `get_cart`
 
-Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) operation.
+Maps to the [Get Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#get-cart) operation.
 
 #### Input Schema
 
@@ -218,19 +243,21 @@ Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) opera
 
 #### Output Schema
 
-| Name         | Type                                                                            | Required | Description                                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
-| id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
-| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
-| context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
-| buyer        | [Buyer](https://ucp.dev/draft/specification/cart-mcp/%7B)                       | No       | Optional buyer information for personalized estimates.                                                                                             |
-| currency     | string                                                                          | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                         |
-| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\]     | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                       |
-| messages     | Array\[[Message](https://ucp.dev/draft/specification/cart-mcp/%7B)\]            | No       | Validation messages, warnings, or informational notices.                                                                                           |
-| links        | Array\[[Link](https://ucp.dev/draft/specification/cart-mcp/%7B)\]               | No       | Optional merchant links (policies, FAQs).                                                                                                          |
-| continue_url | string                                                                          | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                            |
-| expires_at   | string                                                                          | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                        |
+| Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp          | any                                                                              | **Yes**  | UCP metadata for cart responses. No payment handlers needed pre-checkout.                                                                                                                                                                                                                                                                                                                               |
+| id           | string                                                                           | **Yes**  | Unique cart identifier.                                                                                                                                                                                                                                                                                                                                                                                 |
+| line_items   | Array\[[Line Item Response](/pr-test/draft/specification/reference/#line-item)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                                                                                                                                                                                                                                                                                |
+| context      | [Context](/pr-test/draft/specification/reference/#context)                       | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted.                                                                                                                                                                                                                                                      |
+| signals      | [Signals](/pr-test/draft/specification/reference/#signals)                       | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace. |
+| attribution  | [Attribution](/pr-test/draft/specification/reference/#attribution)               | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                        |
+| buyer        | [Buyer](/pr-test/draft/specification/reference/#buyer)                           | No       | Optional buyer information for personalized estimates.                                                                                                                                                                                                                                                                                                                                                  |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                                                                                                                                                                                                                                                                              |
+| totals       | [Totals](/pr-test/draft/specification/reference/#totals)                         | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                                                                                                                                                                                                                                                                            |
+| messages     | Array\[[Message](/pr-test/draft/specification/reference/#message)\]              | No       | Validation messages, warnings, or informational notices.                                                                                                                                                                                                                                                                                                                                                |
+| links        | Array\[[Link](/pr-test/draft/specification/reference/#link)\]                    | No       | Optional merchant links (policies, FAQs).                                                                                                                                                                                                                                                                                                                                                               |
+| continue_url | string                                                                           | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                                                                                                                                                                                                                                                                                 |
+| expires_at   | string                                                                           | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                                                                                                                                                                                                                                                                             |
 
 #### Example
 
@@ -259,55 +286,47 @@ Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) opera
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-15",
-          "capabilities": [
-            {
-              "name": "dev.ucp.shopping.checkout",
-              "version": "2026-01-11"
-            },
-            {
-              "name": "dev.ucp.shopping.cart",
-              "version": "2026-01-15"
-            }
-          ]
-        },
-        "id": "cart_abc123",
-        "line_items": [
-          {
-            "id": "li_1",
-            "item": {
-              "id": "item_123",
-              "title": "Red T-Shirt",
-              "price": 2500
-            },
-            "quantity": 2,
-            "totals": [
-              {"type": "subtotal", "amount": 5000},
-              {"type": "total", "amount": 5000}
-            ]
-          }
-        ],
-        "currency": "USD",
-        "totals": [
-          {
-            "type": "subtotal",
-            "amount": 5000
+      "ucp": {
+        "version": "draft",
+        "capabilities": {
+          "dev.ucp.shopping.checkout": [{"version": "draft"}],
+          "dev.ucp.shopping.cart": [{"version": "draft"}]
+        }
+      },
+      "id": "cart_abc123",
+      "line_items": [
+        {
+          "id": "li_1",
+          "item": {
+            "id": "item_123",
+            "title": "Red T-Shirt",
+            "price": 2500
           },
-          {
-            "type": "total",
-            "amount": 5000
-          }
-        ],
-        "continue_url": "https://business.example.com/checkout?cart=cart_abc123",
-        "expires_at": "2026-01-16T12:00:00Z"
-      }
+          "quantity": 2,
+          "totals": [
+            {"type": "subtotal", "amount": 5000},
+            {"type": "total", "amount": 5000}
+          ]
+        }
+      ],
+      "currency": "USD",
+      "totals": [
+        {
+          "type": "subtotal",
+          "amount": 5000
+        },
+        {
+          "type": "total",
+          "amount": 5000
+        }
+      ],
+      "continue_url": "https://business.example.com/checkout?cart=cart_abc123",
+      "expires_at": "2026-01-16T12:00:00Z"
     },
     "content": [
       {
         "type": "text",
-        "text": "{\"cart\":{\"ucp\":{...},\"id\":\"cart_abc123\",...}}"
+        "text": "{\"ucp\":{...},\"id\":\"cart_abc123\",...}"
       }
     ]
   }
@@ -320,30 +339,26 @@ Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) opera
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-15",
-          "capabilities": [
-            {
-              "name": "dev.ucp.shopping.cart",
-              "version": "2026-01-15"
-            }
-          ]
-        },
-        "messages": [
-          {
-            "type": "error",
-            "code": "not_found",
-            "content": "Cart not found or has expired"
-          }
-        ],
-        "continue_url": "https://merchant.com/"
-      }
+      "ucp": {
+        "version": "draft",
+        "capabilities": {
+          "dev.ucp.shopping.cart": [{"version": "draft"}]
+        }
+      },
+      "messages": [
+        {
+          "type": "error",
+          "code": "not_found",
+          "content": "Cart not found or has expired",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
     },
     "content": [
       {
         "type": "text",
-        "text": "{\"cart\":{\"ucp\":{...},\"messages\":[...],\"continue_url\":\"...\"}}"
+        "text": "{\"ucp\":{...},\"messages\":[...],\"continue_url\":\"...\"}"
       }
     ]
   }
@@ -352,34 +367,38 @@ Maps to the [Get Cart](https://ucp.dev/draft/specification/cart/#get-cart) opera
 
 ### `update_cart`
 
-Maps to the [Update Cart](https://ucp.dev/draft/specification/cart/#update-cart) operation.
+Maps to the [Update Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#update-cart) operation.
 
 #### Input Schema
 
 - `id` (String, required): The ID of the cart session to update.
 
-| Name       | Type                                                                   | Required | Description                                                                                                                                        |
-| ---------- | ---------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| id         | string                                                                 | **Yes**  | Unique cart identifier.                                                                                                                            |
-| line_items | Array\[[Line Item](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
-| context    | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)            | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
-| buyer      | [Buyer](https://ucp.dev/draft/specification/cart-mcp/%7B)              | No       | Optional buyer information for personalized estimates.                                                                                             |
+| Name        | Type                                                                    | Required | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id          | string                                                                  | **Yes**  | Unique cart identifier.                                                                                                                                                                                                                                                                                                                                                                                 |
+| line_items  | Array\[[Line Item](/pr-test/draft/specification/reference/#line-item)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                                                                                                                                                                                                                                                                                |
+| context     | [Context](/pr-test/draft/specification/reference/#context)              | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted.                                                                                                                                                                                                                                                      |
+| signals     | [Signals](/pr-test/draft/specification/reference/#signals)              | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace. |
+| attribution | [Attribution](/pr-test/draft/specification/reference/#attribution)      | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                        |
+| buyer       | [Buyer](/pr-test/draft/specification/reference/#buyer)                  | No       | Optional buyer information for personalized estimates.                                                                                                                                                                                                                                                                                                                                                  |
 
 #### Output Schema
 
-| Name         | Type                                                                            | Required | Description                                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
-| id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
-| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
-| context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
-| buyer        | [Buyer](https://ucp.dev/draft/specification/cart-mcp/%7B)                       | No       | Optional buyer information for personalized estimates.                                                                                             |
-| currency     | string                                                                          | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                         |
-| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\]     | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                       |
-| messages     | Array\[[Message](https://ucp.dev/draft/specification/cart-mcp/%7B)\]            | No       | Validation messages, warnings, or informational notices.                                                                                           |
-| links        | Array\[[Link](https://ucp.dev/draft/specification/cart-mcp/%7B)\]               | No       | Optional merchant links (policies, FAQs).                                                                                                          |
-| continue_url | string                                                                          | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                            |
-| expires_at   | string                                                                          | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                        |
+| Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp          | any                                                                              | **Yes**  | UCP metadata for cart responses. No payment handlers needed pre-checkout.                                                                                                                                                                                                                                                                                                                               |
+| id           | string                                                                           | **Yes**  | Unique cart identifier.                                                                                                                                                                                                                                                                                                                                                                                 |
+| line_items   | Array\[[Line Item Response](/pr-test/draft/specification/reference/#line-item)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                                                                                                                                                                                                                                                                                |
+| context      | [Context](/pr-test/draft/specification/reference/#context)                       | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted.                                                                                                                                                                                                                                                      |
+| signals      | [Signals](/pr-test/draft/specification/reference/#signals)                       | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace. |
+| attribution  | [Attribution](/pr-test/draft/specification/reference/#attribution)               | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                        |
+| buyer        | [Buyer](/pr-test/draft/specification/reference/#buyer)                           | No       | Optional buyer information for personalized estimates.                                                                                                                                                                                                                                                                                                                                                  |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                                                                                                                                                                                                                                                                              |
+| totals       | [Totals](/pr-test/draft/specification/reference/#totals)                         | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                                                                                                                                                                                                                                                                            |
+| messages     | Array\[[Message](/pr-test/draft/specification/reference/#message)\]              | No       | Validation messages, warnings, or informational notices.                                                                                                                                                                                                                                                                                                                                                |
+| links        | Array\[[Link](/pr-test/draft/specification/reference/#link)\]                    | No       | Optional merchant links (policies, FAQs).                                                                                                                                                                                                                                                                                                                                                               |
+| continue_url | string                                                                           | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                                                                                                                                                                                                                                                                                 |
+| expires_at   | string                                                                           | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                                                                                                                                                                                                                                                                             |
 
 #### Example
 
@@ -429,68 +448,60 @@ Maps to the [Update Cart](https://ucp.dev/draft/specification/cart/#update-cart)
   "id": 2,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-15",
-          "capabilities": [
-            {
-              "name": "dev.ucp.shopping.checkout",
-              "version": "2026-01-11"
-            },
-            {
-              "name": "dev.ucp.shopping.cart",
-              "version": "2026-01-15"
-            }
+      "ucp": {
+        "version": "draft",
+        "capabilities": {
+          "dev.ucp.shopping.checkout": [{"version": "draft"}],
+          "dev.ucp.shopping.cart": [{"version": "draft"}]
+        }
+      },
+      "id": "cart_abc123",
+      "line_items": [
+        {
+          "id": "li_1",
+          "item": {
+            "id": "item_123",
+            "title": "Red T-Shirt",
+            "price": 2500
+          },
+          "quantity": 3,
+          "totals": [
+            {"type": "subtotal", "amount": 7500},
+            {"type": "total", "amount": 7500}
           ]
         },
-        "id": "cart_abc123",
-        "line_items": [
-          {
-            "id": "li_1",
-            "item": {
-              "id": "item_123",
-              "title": "Red T-Shirt",
-              "price": 2500
-            },
-            "quantity": 3,
-            "totals": [
-              {"type": "subtotal", "amount": 7500},
-              {"type": "total", "amount": 7500}
-            ]
+        {
+          "id": "li_2",
+          "item": {
+            "id": "item_456",
+            "title": "Blue Jeans",
+            "price": 7500
           },
-          {
-            "id": "li_2",
-            "item": {
-              "id": "item_456",
-              "title": "Blue Jeans",
-              "price": 7500
-            },
-            "quantity": 1,
-            "totals": [
-              {"type": "subtotal", "amount": 7500},
-              {"type": "total", "amount": 7500}
-            ]
-          }
-        ],
-        "currency": "USD",
-        "totals": [
-          {
-            "type": "subtotal",
-            "amount": 15000
-          },
-          {
-            "type": "total",
-            "amount": 15000
-          }
-        ],
-        "continue_url": "https://business.example.com/checkout?cart=cart_abc123",
-        "expires_at": "2026-01-16T12:00:00Z"
-      }
+          "quantity": 1,
+          "totals": [
+            {"type": "subtotal", "amount": 7500},
+            {"type": "total", "amount": 7500}
+          ]
+        }
+      ],
+      "currency": "USD",
+      "totals": [
+        {
+          "type": "subtotal",
+          "amount": 15000
+        },
+        {
+          "type": "total",
+          "amount": 15000
+        }
+      ],
+      "continue_url": "https://business.example.com/checkout?cart=cart_abc123",
+      "expires_at": "2026-01-16T12:00:00Z"
     },
     "content": [
       {
         "type": "text",
-        "text": "{\"cart\":{\"ucp\":{...},\"id\":\"cart_abc123\",...}}"
+        "text": "{\"ucp\":{...},\"id\":\"cart_abc123\",...}"
       }
     ]
   }
@@ -499,7 +510,7 @@ Maps to the [Update Cart](https://ucp.dev/draft/specification/cart/#update-cart)
 
 ### `cancel_cart`
 
-Maps to the [Cancel Cart](https://ucp.dev/draft/specification/cart/#cancel-cart) operation.
+Maps to the [Cancel Cart](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#cancel-cart) operation.
 
 #### Input Schema
 
@@ -507,19 +518,21 @@ Maps to the [Cancel Cart](https://ucp.dev/draft/specification/cart/#cancel-cart)
 
 #### Output Schema
 
-| Name         | Type                                                                            | Required | Description                                                                                                                                        |
-| ------------ | ------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp          | [UCP Response Cart Schema](https://ucp.dev/draft/specification/cart-mcp/%7B)    | **Yes**  | Protocol metadata for discovery profiles and responses. Uses slim schema pattern with context-specific required fields.                            |
-| id           | string                                                                          | **Yes**  | Unique cart identifier.                                                                                                                            |
-| line_items   | Array\[[Line Item Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                           |
-| context      | [Context](https://ucp.dev/draft/specification/cart-mcp/%7B)                     | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted. |
-| buyer        | [Buyer](https://ucp.dev/draft/specification/cart-mcp/%7B)                       | No       | Optional buyer information for personalized estimates.                                                                                             |
-| currency     | string                                                                          | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                         |
-| totals       | Array\[[Total Response](https://ucp.dev/draft/specification/cart-mcp/%7B)\]     | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                       |
-| messages     | Array\[[Message](https://ucp.dev/draft/specification/cart-mcp/%7B)\]            | No       | Validation messages, warnings, or informational notices.                                                                                           |
-| links        | Array\[[Link](https://ucp.dev/draft/specification/cart-mcp/%7B)\]               | No       | Optional merchant links (policies, FAQs).                                                                                                          |
-| continue_url | string                                                                          | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                            |
-| expires_at   | string                                                                          | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                        |
+| Name         | Type                                                                             | Required | Description                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp          | any                                                                              | **Yes**  | UCP metadata for cart responses. No payment handlers needed pre-checkout.                                                                                                                                                                                                                                                                                                                               |
+| id           | string                                                                           | **Yes**  | Unique cart identifier.                                                                                                                                                                                                                                                                                                                                                                                 |
+| line_items   | Array\[[Line Item Response](/pr-test/draft/specification/reference/#line-item)\] | **Yes**  | Cart line items. Same structure as checkout. Full replacement on update.                                                                                                                                                                                                                                                                                                                                |
+| context      | [Context](/pr-test/draft/specification/reference/#context)                       | No       | Buyer signals for localization (country, region, postal_code). Merchant uses for pricing, availability, currency. Falls back to geo-IP if omitted.                                                                                                                                                                                                                                                      |
+| signals      | [Signals](/pr-test/draft/specification/reference/#signals)                       | No       | Environment data provided by the platform to support authorization and abuse prevention. Values MUST NOT be buyer-asserted claims — platforms provide signals based on direct observation or independently verifiable third-party attestations. All signal keys MUST use reverse-domain naming to ensure provenance and prevent collisions when multiple extensions contribute to the shared namespace. |
+| attribution  | [Attribution](/pr-test/draft/specification/reference/#attribution)               | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                        |
+| buyer        | [Buyer](/pr-test/draft/specification/reference/#buyer)                           | No       | Optional buyer information for personalized estimates.                                                                                                                                                                                                                                                                                                                                                  |
+| currency     | string                                                                           | **Yes**  | ISO 4217 currency code. Determined by merchant based on context or geo-IP.                                                                                                                                                                                                                                                                                                                              |
+| totals       | [Totals](/pr-test/draft/specification/reference/#totals)                         | **Yes**  | Estimated cost breakdown. May be partial if shipping/tax not yet calculable.                                                                                                                                                                                                                                                                                                                            |
+| messages     | Array\[[Message](/pr-test/draft/specification/reference/#message)\]              | No       | Validation messages, warnings, or informational notices.                                                                                                                                                                                                                                                                                                                                                |
+| links        | Array\[[Link](/pr-test/draft/specification/reference/#link)\]                    | No       | Optional merchant links (policies, FAQs).                                                                                                                                                                                                                                                                                                                                                               |
+| continue_url | string                                                                           | No       | URL for cart handoff and session recovery. Enables sharing and human-in-the-loop flows.                                                                                                                                                                                                                                                                                                                 |
+| expires_at   | string                                                                           | No       | Cart expiry timestamp (RFC 3339). Optional.                                                                                                                                                                                                                                                                                                                                                             |
 
 #### Example
 
@@ -549,54 +562,46 @@ Maps to the [Cancel Cart](https://ucp.dev/draft/specification/cart/#cancel-cart)
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-15",
-          "capabilities": [
-            {
-              "name": "dev.ucp.shopping.checkout",
-              "version": "2026-01-11"
-            },
-            {
-              "name": "dev.ucp.shopping.cart",
-              "version": "2026-01-15"
-            }
-          ]
-        },
-        "id": "cart_abc123",
-        "line_items": [
-          {
-            "id": "li_1",
-            "item": {
-              "id": "item_123",
-              "title": "Red T-Shirt",
-              "price": 2500
-            },
-            "quantity": 2,
-            "totals": [
-              {"type": "subtotal", "amount": 5000},
-              {"type": "total", "amount": 5000}
-            ]
-          }
-        ],
-        "currency": "USD",
-        "totals": [
-          {
-            "type": "subtotal",
-            "amount": 5000
+      "ucp": {
+        "version": "draft",
+        "capabilities": {
+          "dev.ucp.shopping.checkout": [{"version": "draft"}],
+          "dev.ucp.shopping.cart": [{"version": "draft"}]
+        }
+      },
+      "id": "cart_abc123",
+      "line_items": [
+        {
+          "id": "li_1",
+          "item": {
+            "id": "item_123",
+            "title": "Red T-Shirt",
+            "price": 2500
           },
-          {
-            "type": "total",
-            "amount": 5000
-          }
-        ],
-        "continue_url": "https://business.example.com/checkout?cart=cart_abc123"
-      }
+          "quantity": 2,
+          "totals": [
+            {"type": "subtotal", "amount": 5000},
+            {"type": "total", "amount": 5000}
+          ]
+        }
+      ],
+      "currency": "USD",
+      "totals": [
+        {
+          "type": "subtotal",
+          "amount": 5000
+        },
+        {
+          "type": "total",
+          "amount": 5000
+        }
+      ],
+      "continue_url": "https://business.example.com/checkout?cart=cart_abc123"
     },
     "content": [
       {
         "type": "text",
-        "text": "{\"cart\":{\"ucp\":{...},\"id\":\"cart_abc123\",...}}"
+        "text": "{\"ucp\":{...},\"id\":\"cart_abc123\",...}"
       }
     ]
   }
@@ -605,7 +610,7 @@ Maps to the [Cancel Cart](https://ucp.dev/draft/specification/cart/#cancel-cart)
 
 ## Error Handling
 
-UCP distinguishes between protocol errors and business outcomes. See the [Core Specification](https://ucp.dev/draft/specification/overview/#error-handling) for the complete error code registry and transport binding examples.
+UCP distinguishes between protocol errors and business outcomes. See the [Core Specification](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling) for the complete error code registry and transport binding examples.
 
 - **Protocol errors**: Transport-level failures (authentication, rate limiting, unavailability) that prevent request processing. Returned as JSON-RPC `error` with code `-32000` (or `-32001` for discovery errors).
 - **Business outcomes**: Application-level results from successful request processing, returned as JSON-RPC `result` with UCP envelope and `messages`.
@@ -620,25 +625,24 @@ Business outcomes (including not found and validation errors) are returned as JS
   "id": 1,
   "result": {
     "structuredContent": {
-      "cart": {
-        "ucp": {
-          "version": "2026-01-11",
-          "capabilities": {
-            "dev.ucp.shopping.cart": [{"version": "2026-01-11"}]
-          }
-        },
-        "messages": [
-          {
-            "type": "error",
-            "code": "not_found",
-            "content": "Cart not found or has expired"
-          }
-        ],
-        "continue_url": "https://merchant.com/"
-      }
+      "ucp": {
+        "version": "draft",
+        "capabilities": {
+          "dev.ucp.shopping.cart": [{"version": "draft"}]
+        }
+      },
+      "messages": [
+        {
+          "type": "error",
+          "code": "not_found",
+          "content": "Cart not found or has expired",
+          "severity": "unrecoverable"
+        }
+      ],
+      "continue_url": "https://merchant.com/"
     },
     "content": [
-      {"type": "text", "text": "{\"cart\":{...}}"}
+      {"type": "text", "text": "{\"ucp\":{...},\"messages\":[...]}"}
     ]
   }
 }
@@ -650,7 +654,7 @@ A conforming MCP transport implementation **MUST**:
 
 1. Implement JSON-RPC 2.0 protocol correctly.
 1. Provide all core cart tools defined in this specification.
-1. Return errors per the [Core Specification](https://ucp.dev/draft/specification/overview/#error-handling).
+1. Return errors per the [Core Specification](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling).
 1. Return business outcomes as JSON-RPC `result` with UCP envelope and `messages` array.
 1. Validate tool inputs against UCP schemas.
 1. Support HTTP transport with streaming.
