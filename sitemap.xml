@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>{&#34;message&#34;:&#34;Not Found&#34;,&#34;documentation_url&#34;:&#34;https://docs.github.com/rest/pages/pages#get-a-apiname-pages-site&#34;,&#34;status&#34;:&#34;404&#34;}/</loc>
-         <lastmod>2026-02-28</lastmod>
+         <loc>https://sakinaroufid.github.io/pr-test/</loc>
+         <lastmod>2026-05-16</lastmod>
     </url>
     <url>
-         <loc>{&#34;message&#34;:&#34;Not Found&#34;,&#34;documentation_url&#34;:&#34;https:/docs.github.com/rest/pages/versioning/</loc>
-         <lastmod>2026-02-28</lastmod>
+         <loc>https://sakinaroufid.github.io/pr-test/versioning/</loc>
+         <lastmod>2026-05-16</lastmod>
     </url>
     <url>
-         <loc>{&#34;message&#34;:&#34;Not Found&#34;,&#34;documentation_url&#34;:&#34;https:/docs.github.com/rest/pages/documentation/core-concepts/</loc>
-         <lastmod>2026-02-28</lastmod>
+         <loc>https://sakinaroufid.github.io/pr-test/documentation/core-concepts/</loc>
+         <lastmod>2026-05-16</lastmod>
     </url>
     <url>
-         <loc>{&#34;message&#34;:&#34;Not Found&#34;,&#34;documentation_url&#34;:&#34;https:/docs.github.com/rest/pages/documentation/roadmap/</loc>
-         <lastmod>2026-02-28</lastmod>
+         <loc>https://sakinaroufid.github.io/pr-test/documentation/roadmap/</loc>
+         <lastmod>2026-05-16</lastmod>
     </url>
     <url>
-         <loc>{&#34;message&#34;:&#34;Not Found&#34;,&#34;documentation_url&#34;:&#34;https:/docs.github.com/rest/pages/documentation/schema-authoring/</loc>
-         <lastmod>2026-02-28</lastmod>
+         <loc>https://sakinaroufid.github.io/pr-test/documentation/schema-authoring/</loc>
+         <lastmod>2026-05-16</lastmod>
     </url>
     <url>
-         <loc>{&#34;message&#34;:&#34;Not Found&#34;,&#34;documentation_url&#34;:&#34;https:/docs.github.com/rest/pages/documentation/ucp-and-ap2/</loc>
-         <lastmod>2026-02-28</lastmod>
+         <loc>https://sakinaroufid.github.io/pr-test/documentation/ucp-and-ap2/</loc>
+         <lastmod>2026-05-16</lastmod>
     </url>
 </urlset>

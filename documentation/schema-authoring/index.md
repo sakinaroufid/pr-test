@@ -63,10 +63,9 @@ Define transport bindings that appear in `ucp.services{}` registries. Each trans
 
 - **Top-level fields**: `$schema`, `$id`, `title`, `description`, `name`, `version`
 - **Variants**: `platform_schema`, `business_schema`
-- **Transport requirements**:
-  - REST/MCP: `endpoint`, `schema` (OpenAPI/OpenRPC URL)
-  - A2A: `endpoint` (Agent Card URL)
-  - Embedded: `schema` (OpenRPC URL)
+- **Transport requirements** (additional beyond the common base):
+  - Platform profile (`platform_schema`): REST/MCP/Embedded require `schema` (OpenAPI/OpenRPC URL). A2A has no additional requirements.
+  - Business profile (`business_schema`): REST/MCP/A2A require `endpoint` (Agent Card URL for A2A). Embedded has no additional requirements.
 
 ### Payment Handler Schemas
 
@@ -79,7 +78,7 @@ Define payment handler configurations in `ucp.payment_handlers{}` registries.
 
 Examples: `com.google.pay`, `dev.shopify.shop_pay`, `dev.ucp.processor_tokenizer`
 
-**→ See \[Payment Handler Guide\](https://ucp.dev/documentation/schema-authoring/{"message":"Not Found","documentation_url":"https:/docs.github.com/rest/pages/pages/latest/specification/payment-handler-guide/index.md)** for detailed guidance on handler structure, config/instrument/credential schemas, and the full specification template.
+**→ See [Payment Handler Guide](/pr-test/latest/specification/payment-handler-guide/)** for detailed guidance on handler structure, config/instrument/credential schemas, and the full specification template.
 
 ### Component Schemas
 
@@ -117,17 +116,17 @@ UCP organizes capabilities, services, and handlers in **registries**—objects k
 ```json
 {
   "capabilities": {
-    "dev.ucp.shopping.checkout": [{"version": "2026-01-11"}],
-    "dev.ucp.shopping.fulfillment": [{"version": "2026-01-11"}]
+    "dev.ucp.shopping.checkout": [{"version": "draft"}],
+    "dev.ucp.shopping.fulfillment": [{"version": "draft"}]
   },
   "services": {
     "dev.ucp.shopping": [
-      {"version": "2026-01-11", "transport": "rest"},
-      {"version": "2026-01-11", "transport": "mcp"}
+      {"version": "draft", "transport": "rest"},
+      {"version": "draft", "transport": "mcp"}
     ]
   },
   "payment_handlers": {
-    "com.google.pay": [{"id": "gpay_1234", "version": "2026-01-11", "available_instruments": [{"type": "google_pay_card"}]}]
+    "com.google.pay": [{"id": "gpay_1234", "version": "draft", "available_instruments": [{"type": "google_pay_card"}]}]
   }
 }
 ```
@@ -163,9 +162,9 @@ Each entity type defines **three variants** for different contexts:
 ```json
 {
   "dev.ucp.shopping.fulfillment": [{
-    "version": "2026-01-11",
-    "spec": "https://ucp.dev/specification/fulfillment",
-    "schema": "https://ucp.dev/schemas/shopping/fulfillment.json",
+    "version": "draft",
+    "spec": "https://ucp.dev/draft/specification/fulfillment",
+    "schema": "https://ucp.dev/draft/schemas/shopping/fulfillment.json",
     "config": {
       "supports_multi_group": true
     }
@@ -178,7 +177,7 @@ Each entity type defines **three variants** for different contexts:
 ```json
 {
   "dev.ucp.shopping.fulfillment": [{
-    "version": "2026-01-11",
+    "version": "draft",
     "config": {
       "allows_multi_destination": {"shipping": true}
     }
@@ -192,7 +191,7 @@ Each entity type defines **three variants** for different contexts:
 {
   "ucp": {
     "capabilities": {
-      "dev.ucp.shopping.fulfillment": [{"version": "2026-01-11"}]
+      "dev.ucp.shopping.fulfillment": [{"version": "draft"}]
     }
   }
 }
@@ -213,6 +212,26 @@ Define all three in your schema's `$defs`:
   }
 }
 ```
+
+## String Vocabularies vs Enums
+
+Prefer **open string vocabularies** with documented well-known values over closed `enum` arrays. Enums are a one-way door: adding a new value is a breaking change for strict validators, and removing one breaks existing producers.
+
+```json
+// PREFER: open vocabulary — extensible without schema changes
+"type": {
+  "type": "string",
+  "description": "Media type. Well-known values: `image`, `video`, `model_3d`."
+}
+
+// AVOID: closed enum — adding `audio` requires a schema version bump
+"type": {
+  "type": "string",
+  "enum": ["image", "video", "model_3d"]
+}
+```
+
+**Use `enum` only for provably closed sets** where new values would represent a fundamental protocol change (e.g., `checkout.status: open | completed | expired`). If the set might grow as new use cases emerge, use an open string with well-known values documented in the `description`.
 
 ## Versioning Strategy
 
@@ -235,6 +254,63 @@ Capabilities outside `dev.ucp.*` version fully independently:
 
 Vendor schemas follow the same self-describing requirements.
 
+## Extensibility and Forward Compatibility
+
+When designing schemas, you must account for how older clients will validate newer payloads. In serialization formats like Protobuf, adding a new field or enum value is generally a safe, forward-compatible change.
+
+Because modern code generators (e.g. [Quicktype](https://quicktype.io/)) translate JSON Schemas into strictly typed classes (e.g., Go structs or Java Enums), certain schema constraints will cause deserialization errors on older clients as the protocol evolves. Avoiding such changes helps minimize the need to up-version the protocol.
+
+### Open Enumerations
+
+If a field's list of values might expand in the future (e.g., adding a `"refunded"` status or a new payment method), **do not use `enum`**.
+
+Instead, define a standard `string`, document the requirement to ignore unknown values in the `description`, and use `examples` to convey current expected values to code generators. Avoid complex "Open Set" validation patterns (e.g., combining `anyOf` with `const`), as they frequently confuse client-side code generators and make schemas difficult to read.
+
+```json
+"cancellation_reason": {
+  "type": "string",
+  "description": "Reason for order cancellation. Clients MUST tolerate and ignore unknown values.",
+  "examples": ["customer_requested", "inventory_shortage", "fraud_suspected"]
+}
+```
+
+### Closed Enumerations
+
+Use strict `enum` or `const` only for permanently fixed domains or when unknown values are inherently unsupported. Reserve them for cases where adding a new value inherently requires integrators to update their code (e.g., protocol versions, strict type discriminators, or days of the week).
+
+```json
+"status": {
+  "type": "string",
+  "enum": ["open", "completed", "expired"],
+  "description": "Lifecycle state. This domain is strictly bounded; unknown states represent a breakdown in the state machine and MUST be rejected."
+}
+```
+
+### Open Objects (`additionalProperties`)
+
+Marking an object as closed preemptively prevents any future non-breaking additions to the schema. In a distributed protocol, what would otherwise be a backward-compatible field addition (e.g., adding a "gift_message" field to an order) becomes a breaking change for any client validating against a closed schema.
+
+By default, JSON Schema is open and ignores unknown properties. Authors should leave this keyword omitted except in rare circumstances: polymorphic discriminators (where strictness prevents oneOf validation ambiguity), security-critical payloads (where unknown fields may indicate tampering), or protocol envelopes (where strictness is useful to catch typos in core metadata like the `ucp` block).
+
+**Anti-Pattern (Prevents adding new fields without a reversion):**
+
+```json
+"totals": {
+  "type": "object",
+  "properties": {
+    "subtotal": {"type": "integer"}
+  },
+  "additionalProperties": false
+}
+```
+
+### Property-Count Constraints (`minProperties` / `maxProperties`)
+
+By default, UCP schemas do not set `minProperties` or `maxProperties` on object fields:
+
+- **`maxProperties`** — Limits are deferred to implementers. The protocol does not define caps because any specific limit requires judgment calls that inevitably run into exceptions. Implementers are encouraged to impose their own constraints and surface clear error feedback to support debugging and good behavior.
+- **`minProperties`** — Empty objects (`{}`) are well-formed and harmless. Implementers should accept and process them as a no-op.
+
 ## Complete Example: Capability Schema
 
 A capability schema defines both payload structure and declaration variants:
@@ -242,9 +318,9 @@ A capability schema defines both payload structure and declaration variants:
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://ucp.dev/schemas/shopping/checkout.json",
+  "$id": "https://ucp.dev/draft/schemas/shopping/checkout.json",
   "name": "dev.ucp.shopping.checkout",
-  "version": "2026-01-11",
+  "version": "draft",
   "title": "Checkout",
   "description": "Base checkout schema. Extensions compose via allOf.",
 
