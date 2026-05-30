@@ -193,7 +193,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="/pr-test/" title="Universal Commerce Protocol (UCP)" class="md-header__button md-logo" aria-label="Universal Commerce Protocol (UCP)" data-md-component="logo">
       
-  <img src="../../assets/updated-icon.svg" alt="logo">
+  <img src="../../assets/UCP-small.svg" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -372,7 +372,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="/pr-test/" title="Universal Commerce Protocol (UCP)" class="md-nav__button md-logo" aria-label="Universal Commerce Protocol (UCP)" data-md-component="logo">
       
-  <img src="../../assets/updated-icon.svg" alt="logo">
+  <img src="../../assets/UCP-small.svg" alt="logo">
 
     </a>
     Universal Commerce Protocol (UCP)
@@ -849,6 +849,62 @@
     
   
     Fulfillment Extension
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loyalty/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loyalty Extension
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../split-payments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Split Payments Extension
   
 
     
@@ -2540,6 +2596,7 @@ payload example, which defines its own mechanism to encrypt.</p>
 <p>Converts a raw credential into a token bound to a checkout and identity.</p>
 <p><strong>When to implement:</strong> Always, unless you are an agent generating tokens
 internally.</p>
+<!-- ucp:example skip reason="tokenization API, not UCP payload" -->
 <div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="err">POST</span><span class="w"> </span><span class="err">/</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">ize</span>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="err">Co</span><span class="kc">ntent</span><span class="mi">-</span><span class="err">Type</span><span class="p">:</span><span class="w"> </span><span class="err">applica</span><span class="kc">t</span><span class="err">io</span><span class="kc">n</span><span class="err">/jso</span><span class="kc">n</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
@@ -2561,6 +2618,7 @@ internally.</p>
 </span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Response:</strong></p>
+<!-- ucp:example skip reason="tokenization API, not UCP payload" -->
 <div class="language-json highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">&quot;token&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tok_abc123xyz789&quot;</span>
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">}</span>
@@ -2569,6 +2627,7 @@ internally.</p>
 <p>Returns the original credential for a valid token. Binding must match.</p>
 <p><strong>When to implement:</strong> Always, unless you combine detokenization with
 processing (see PSP example).</p>
+<!-- ucp:example skip reason="tokenization API, not UCP payload" -->
 <div class="language-json highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="err">POST</span><span class="w"> </span><span class="err">/de</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">ize</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="err">Co</span><span class="kc">ntent</span><span class="mi">-</span><span class="err">Type</span><span class="p">:</span><span class="w"> </span><span class="err">applica</span><span class="kc">t</span><span class="err">io</span><span class="kc">n</span><span class="err">/jso</span><span class="kc">n</span>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="err">Au</span><span class="kc">t</span><span class="err">horiza</span><span class="kc">t</span><span class="err">io</span><span class="kc">n</span><span class="p">:</span><span class="w"> </span><span class="err">Bearer</span><span class="w"> </span><span class="p">{</span><span class="err">caller_access_</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="p">}</span>
@@ -2581,6 +2640,7 @@ processing (see PSP example).</p>
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="p">}</span>
 </span></code></pre></div>
 <p><strong>Response:</strong></p>
+<!-- ucp:example skip reason="tokenization API, not UCP payload" -->
 <div class="language-json highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">{</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;card&quot;</span><span class="p">,</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">&quot;card_number_type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;fpan&quot;</span><span class="p">,</span>
