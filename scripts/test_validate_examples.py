@@ -210,6 +210,64 @@ def test_string_ellipsis_in_array() -> None:
 
 
 # -----------------------------------------------------------
+# JSONPath helpers \u2014 malformed-segment handling
+# -----------------------------------------------------------
+
+
+def _raises(fn) -> Exception | None:
+  """Return the exception raised by fn(), or None."""
+  try:
+    fn()
+  except Exception as exc:  # noqa: BLE001 - test helper inspects the type
+    return exc
+  return None
+
+
+def test_jsonpath_malformed_segment() -> None:
+  """Malformed target= segments raise a caught KeyError, never AttributeError.
+
+  A `target=` JSONPath whose segment is not `name` or `name[idx]` (e.g. one
+  containing a hyphen) makes `_SEGMENT_RE.match` return None. All three
+  navigators must surface this as a KeyError (the type the process_block
+  call sites catch) rather than letting an AttributeError abort the run.
+  """
+  get_exc = _raises(lambda: v.jsonpath_get({"bad": {}}, "$.bad-seg"))
+  _check(
+    "jsonpath_get_malformed_raises_keyerror",
+    isinstance(get_exc, KeyError),
+    f"got {get_exc!r}",
+  )
+
+  set_exc = _raises(lambda: v.jsonpath_set({"bad": {}}, "$.bad-seg", 1))
+  _check(
+    "jsonpath_set_malformed_raises_keyerror",
+    isinstance(set_exc, KeyError),
+    f"got {set_exc!r}",
+  )
+
+  # A malformed trailing segment after a valid leading segment must also be
+  # caught (the leading segment can navigate past jsonpath_get_schema's early
+  # return, reaching jsonpath_set independently).
+  set_trailing_exc = _raises(
+    lambda: v.jsonpath_set({"foo": {}}, "$.foo.bad-seg", 1)
+  )
+  _check(
+    "jsonpath_set_malformed_trailing_raises_keyerror",
+    isinstance(set_trailing_exc, KeyError),
+    f"got {set_trailing_exc!r}",
+  )
+
+  schema_exc = _raises(
+    lambda: v.jsonpath_get_schema({"properties": {"bad": {}}}, "$.bad-seg")
+  )
+  _check(
+    "jsonpath_get_schema_malformed_raises_keyerror",
+    isinstance(schema_exc, KeyError),
+    f"got {schema_exc!r}",
+  )
+
+
+# -----------------------------------------------------------
 # Annotation parsing
 # -----------------------------------------------------------
 
@@ -516,6 +574,7 @@ def main() -> int:
   test_parse_example_keeps_sentinels()
   test_strip_ellipsis_records_paths()
   test_string_ellipsis_in_array()
+  test_jsonpath_malformed_segment()
   test_annotation_parsing()
   test_extract_blocks()
   test_process_block_integration()
