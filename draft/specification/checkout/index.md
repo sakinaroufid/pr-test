@@ -70,7 +70,7 @@ The checkout `status` field indicates the current phase of the session and deter
 
 ### Error Handling
 
-The `messages` array contains errors, warnings, and informational messages about the checkout state. `ucp.status` is the shape discriminator — `"success"` means the response carries the expected payload, `"error"` means it carries error information instead. The `severity` field on each error message prescribes the recommended action:
+The `messages` array contains errors, warnings, and informational messages about the checkout state. `ucp.status` is the shape discriminator — `"success"` means the response carries the expected payload, `"error"` means it carries error information instead. Each error message carries a `type`, `code`, `severity`, `content`, and an optional `path` that identifies the specific field or line item the message refers to (see [The `path` Field](#the-path-field) below). The `severity` field prescribes the recommended platform action:
 
 | Severity                | Meaning                                          | Platform Action                                                   |
 | ----------------------- | ------------------------------------------------ | ----------------------------------------------------------------- |
@@ -113,6 +113,7 @@ When status is `incomplete` or `requires_escalation`, platforms should process e
     "type": "error",
     "code": "invalid_phone",
     "severity": "recoverable",
+    "path": "$.buyer.phone_number",
     "content": "Phone number format is invalid"
   },
   {
@@ -149,7 +150,11 @@ IF unrecoverable is not empty
 
 IF recoverable is not empty
   FOR EACH error IN recoverable
-    ATTEMPT to fix error (e.g., reformat phone number)
+    IF error.path is present
+      IDENTIFY the field at error.path in the request payload
+      ATTEMPT to fix that field (e.g., reformat phone at $.buyer.phone_number)
+    ELSE
+      ATTEMPT generic fix based on error.code
   CALL Update Checkout
   RETURN and re-evaluate response
 
@@ -174,6 +179,34 @@ Standard errors are standardized error codes that platforms are expected to hand
 Businesses **SHOULD** mark standard errors with `severity: recoverable` to signal that platforms should provide appropriate UX (out-of-stock messaging, address validation prompts, payment method changes) rather than generic error messages or deferring to checkout completion.
 
 Example: `out_of_stock` requires specific upfront UX, whereas `payment_required` can be handled generically at submission.
+
+#### The `path` Field
+
+The optional `path` field on a message anchors the error to a specific component of the response payload. Platforms use it to associate error messages with the input field or line item that caused them - for example, highlighting a specific buyer field in a form or flagging a specific cart line.
+
+`path` **MUST** be an [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535) JSONPath expression relative to the root of the UCP response object. Property names **MUST** use snake_case matching the request schema. When `path` is omitted, the message applies to the response as a whole.
+
+**Simple field reference:**
+
+```json
+{ "path": "$.buyer.email" }
+```
+
+**Indexed array element:**
+
+```json
+{ "path": "$.line_items[0].quantity" }
+```
+
+**Filter expression (optional, when referencing a specific item by ID):**
+
+```json
+{ "path": "$.line_items[?(@.id=='line-item-uuid')].quantity" }
+```
+
+Filter expressions are valid RFC 9535 syntax and **MAY** be used when referencing a specific line item by `id` is clearer than its index. Index-based paths are equally valid; the business returns indices that are unambiguous within the response.
+
+**Specificity rule:** A path to a specific field (e.g., `$.line_items[0].quantity`) takes precedence over a path to its parent (e.g., `$.line_items[0]`). When multiple errors apply to the same field, each message **SHOULD** carry the most specific path applicable.
 
 #### Eligibility Verification at Completion
 
@@ -538,9 +571,9 @@ Context signals are provisional—not authoritative data. Businesses SHOULD use 
 
 | Name            | Type                                                                                        | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| address_country | string                                                                                      | No       | The country. Recommended to be in 2-letter ISO 3166-1 alpha-2 format, for example "US". For backward compatibility, a 3-letter ISO 3166-1 alpha-3 country code such as "SGP" or a full country name such as "Singapore" can also be used. Optional hint for market context (currency, availability, pricing)—higher-resolution data (e.g., shipping address) supersedes this value.                                                                                |
-| address_region  | string                                                                                      | No       | The region in which the locality is, and which is in the country. For example, California or another appropriate first-level Administrative division. Optional hint for progressive localization—higher-resolution data (e.g., shipping address) supersedes this value.                                                                                                                                                                                            |
-| postal_code     | string                                                                                      | No       | The postal code. For example, 94043. Optional hint for regional refinement—higher-resolution data (e.g., shipping address) supersedes this value.                                                                                                                                                                                                                                                                                                                  |
+| address_country | string                                                                                      | No       | The country, as a 2-letter ISO 3166-1 alpha-2 code (e.g. "US"). A 3-letter alpha-3 code or full country name MAY also be used.                                                                                                                                                                                                                                                                                                                                     |
+| address_region  | string                                                                                      | No       | The first-level administrative region within the country (e.g. a state or province such as California).                                                                                                                                                                                                                                                                                                                                                            |
+| postal_code     | string                                                                                      | No       | The postal code (e.g. "94043").                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | intent          | string                                                                                      | No       | Background context describing buyer's intent (e.g., 'looking for a gift under $50', 'need something durable for outdoor use'). Informs relevance, recommendations, and personalization.                                                                                                                                                                                                                                                                            |
 | language        | string                                                                                      | No       | Preferred language for content. Use IETF BCP 47 language tags (e.g., 'en', 'fr-CA', 'zh-Hans'). For REST, equivalent to Accept-Language header—platforms SHOULD fall back to Accept-Language when this field is absent; when provided, overrides Accept-Language. Businesses MAY return content in a different language if unavailable.                                                                                                                            |
 | currency        | string                                                                                      | No       | Preferred currency (ISO 4217, e.g., 'EUR', 'USD'). Businesses determine presentment currency from context and authoritative signals; this hint MAY inform selection in multi-currency markets. Also serves as the denomination for price filter values — platforms SHOULD include this field when sending price filters. Response prices include explicit currency confirming the resolution.                                                                      |
@@ -614,11 +647,7 @@ Platform-emitted referral and conversion-event context — campaign identifiers,
 
 ### Link
 
-| Name  | Type   | Required | Description                                                                                                                                                                                                                          |
-| ----- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| type  | string | **Yes**  | Type of link. Well-known values: `privacy_policy`, `terms_of_service`, `refund_policy`, `shipping_policy`, `faq`. Consumers SHOULD handle unknown values gracefully by displaying them using the `title` field or omitting the link. |
-| url   | string | **Yes**  | The actual URL pointing to the content to be displayed.                                                                                                                                                                              |
-| title | string | No       | Optional display text for the link. When provided, use this instead of generating from type.                                                                                                                                         |
+See [Link](/pr-test/draft/specification/reference/#link) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 #### Well-Known Link Types
 
@@ -636,45 +665,23 @@ Businesses **MAY** define custom types for domain-specific needs. Platforms **SH
 
 ### Message
 
-This object MUST be one of the following types: [Message Error](/pr-test/draft/specification/reference/#message-error), [Message Warning](/pr-test/draft/specification/reference/#message-warning), [Message Info](/pr-test/draft/specification/reference/#message-info).
+See [Message](/pr-test/draft/specification/reference/#message) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ### Message Error
 
-| Name         | Type                                                             | Required | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ------------ | ---------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| type         | string                                                           | **Yes**  | **Constant = error**. Message type discriminator.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| code         | [Error Code](/pr-test/draft/specification/reference/#error-code) | **Yes**  | Error code identifying the type of error. Standard errors are defined in capability specifications (see examples) and have standardized semantics; freeform codes are permitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| path         | string                                                           | No       | RFC 9535 JSONPath to the component the message refers to (e.g., $.line_items[0]).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| content_type | string                                                           | No       | Content format, default = plain. **Enum:** `plain`, `markdown`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| content      | string                                                           | **Yes**  | Human-readable message.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| severity     | string                                                           | **Yes**  | Reflects the resource state and recommended action. 'recoverable': platform can resolve by modifying inputs and retrying via API. 'requires_buyer_input': merchant requires information their API doesn't support collecting programmatically (checkout incomplete). 'requires_buyer_review': buyer must authorize before order placement due to policy, regulatory, or entitlement rules. 'unrecoverable': no valid resource exists to act on, retry with new resource or inputs. Errors with 'requires\_*' severity contribute to 'status: requires_escalation'.* *Enum:*\* `recoverable`, `requires_buyer_input`, `requires_buyer_review`, `unrecoverable` |
+See [Message Error](/pr-test/draft/specification/reference/#message-error) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 #### Error Code
 
-Error code identifying the type of error. Standard errors are defined in capability specifications (see examples) and have standardized semantics; freeform codes are permitted.
+See [Error Code](/pr-test/draft/specification/reference/#error-code) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ### Message Info
 
-| Name         | Type                                                           | Required | Description                                                                                                                                                                                    |
-| ------------ | -------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| type         | string                                                         | **Yes**  | **Constant = info**. Message type discriminator.                                                                                                                                               |
-| path         | string                                                         | No       | RFC 9535 JSONPath to the component the message refers to (e.g., $.line_items[0]).                                                                                                              |
-| code         | [Info Code](/pr-test/draft/specification/reference/#info-code) | No       | Info code identifying the type of informational message. Standard codes are defined in capability specifications (see examples) and have standardized semantics; freeform codes are permitted. |
-| content_type | string                                                         | No       | Content format, default = plain. **Enum:** `plain`, `markdown`                                                                                                                                 |
-| content      | string                                                         | **Yes**  | Human-readable message.                                                                                                                                                                        |
+See [Message Info](/pr-test/draft/specification/reference/#message-info) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ### Message Warning
 
-| Name         | Type                                                                 | Required | Description                                                                                                                                                                                                                                         |
-| ------------ | -------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| type         | string                                                               | **Yes**  | **Constant = warning**. Message type discriminator.                                                                                                                                                                                                 |
-| path         | string                                                               | No       | RFC 9535 JSONPath to the component the message refers to (e.g., $.line_items[0]).                                                                                                                                                                   |
-| code         | [Warning Code](/pr-test/draft/specification/reference/#warning-code) | **Yes**  | Warning code identifying the type of warning. Standard codes are defined in capability specifications (see examples) and have standardized semantics; freeform codes are permitted.                                                                 |
-| content      | string                                                               | **Yes**  | Human-readable warning message that MUST be displayed.                                                                                                                                                                                              |
-| content_type | string                                                               | No       | Content format, default = plain. **Enum:** `plain`, `markdown`                                                                                                                                                                                      |
-| presentation | string                                                               | No       | Rendering contract for this warning. 'notice' (default): platform MUST display, MAY dismiss. 'disclosure': platform MUST display in proximity to the path-referenced component, MUST NOT hide or auto-dismiss. See specification for full contract. |
-| image_url    | string                                                               | No       | URL to a required visual element (e.g., warning symbol, energy class label).                                                                                                                                                                        |
-| url          | string                                                               | No       | Reference URL for more information (e.g., regulatory site, registry entry, policy page).                                                                                                                                                            |
+See [Message Warning](/pr-test/draft/specification/reference/#message-warning) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ### Payment
 
@@ -704,30 +711,20 @@ A payment instrument with selection state.
 
 ### Postal Address
 
-| Name             | Type   | Required | Description                                                                                                                                                                                                                               |
-| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| extended_address | string | No       | An address extension such as an apartment number, C/O or alternative name.                                                                                                                                                                |
-| street_address   | string | No       | The street address.                                                                                                                                                                                                                       |
-| address_locality | string | No       | The locality in which the street address is, and which is in the region. For example, Mountain View.                                                                                                                                      |
-| address_region   | string | No       | The region in which the locality is, and which is in the country. Required for applicable countries (i.e. state in US, province in CA). For example, California or another appropriate first-level Administrative division.               |
-| address_country  | string | No       | The country. Recommended to be in 2-letter ISO 3166-1 alpha-2 format, for example "US". For backward compatibility, a 3-letter ISO 3166-1 alpha-3 country code such as "SGP" or a full country name such as "Singapore" can also be used. |
-| postal_code      | string | No       | The postal code. For example, 94043.                                                                                                                                                                                                      |
-| first_name       | string | No       | Optional. First name of the contact associated with the address.                                                                                                                                                                          |
-| last_name        | string | No       | Optional. Last name of the contact associated with the address.                                                                                                                                                                           |
-| phone_number     | string | No       | Optional. Phone number of the contact associated with the address.                                                                                                                                                                        |
+See [Postal Address](/pr-test/draft/specification/reference/#postal-address) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ### Response
 
 Capability reference in responses. Only name/version required to confirm active capabilities.
 
-| Name    | Type    | Required | Description                                                                                                                     |
-| ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| version | string  | **Yes**  | Entity version in YYYY-MM-DD format.                                                                                            |
-| spec    | string  | No       | URL to human-readable specification document.                                                                                   |
-| schema  | string  | No       | URL to JSON Schema defining this entity's structure and payloads.                                                               |
-| id      | string  | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
-| config  | object  | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
-| extends | OneOf[] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
+| Name    | Type                       | Required | Description                                                                                                                     |
+| ------- | -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| version | string                     | **Yes**  | Entity version in YYYY-MM-DD format.                                                                                            |
+| spec    | string                     | No       | URL to human-readable specification document.                                                                                   |
+| schema  | string                     | No       | URL to JSON Schema defining this entity's structure and payloads.                                                               |
+| id      | string                     | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
+| config  | object                     | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
+| extends | OneOf\[`string`, `array`\] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
 
 ### Total
 
@@ -873,8 +870,4 @@ UCP metadata for checkout responses.
 
 ### Error Response
 
-| Name         | Type                                                                | Required | Description                                                       |
-| ------------ | ------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| ucp          | any                                                                 | **Yes**  | UCP protocol metadata. Status MUST be 'error' for error response. |
-| messages     | Array\[[Message](/pr-test/draft/specification/reference/#message)\] | **Yes**  | Array of messages describing why the operation failed.            |
-| continue_url | string                                                              | No       | URL for buyer handoff or session recovery.                        |
+See [Error Response](/pr-test/draft/specification/reference/#error-response) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.

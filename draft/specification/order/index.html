@@ -3286,7 +3286,7 @@ split, merged, or adjusted post-order.</p>
 <td style="text-align: left;">method_type</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Yes</strong></td>
-<td style="text-align: left;">Delivery method type (shipping, pickup, digital).<br><strong>Enum:</strong> <code>shipping</code>, <code>pickup</code>, <code>digital</code></td>
+<td style="text-align: left;">Delivery method type. Well-known values: <code>shipping</code>, <code>pickup</code>, <code>digital</code>; additional values MAY be used.</td>
 </tr>
 <tr>
 <td style="text-align: left;">destination</td>
@@ -3898,7 +3898,7 @@ to ensure authenticity and integrity. Signatures follow the
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="na">Host</span><span class="o">:</span> <span class="l">platform.example.com</span>
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
 </span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="na">UCP-Agent</span><span class="o">:</span> <span class="l">profile=&quot;https://merchant.example/.well-known/ucp&quot;</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="na">Content-Digest</span><span class="o">:</span> <span class="l">sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="na">Content-Digest</span><span class="o">:</span> <span class="l">sha-256=:X48E9q...:</span>
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="na">Signature-Input</span><span class="o">:</span> <span class="l">sig1=(&quot;@method&quot; &quot;@authority&quot; &quot;@path&quot; &quot;content-digest&quot; &quot;content-type&quot;);keyid=&quot;merchant-2026&quot;</span>
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="na">Signature</span><span class="o">:</span> <span class="l">sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:</span>
 </span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
@@ -3908,7 +3908,7 @@ to ensure authenticity and integrity. Signatures follow the
 <ol>
 <li>Compute SHA-256 digest of the raw request body and set <code>Content-Digest</code> header</li>
 <li>Build signature base per <a href="https://www.rfc-editor.org/rfc/rfc9421">RFC 9421</a></li>
-<li>Sign using a key from <code>signing_keys</code> in the business's UCP profile</li>
+<li>Sign using a key from <code>keys</code> in the business's UCP profile</li>
 <li>Set <code>Signature-Input</code> and <code>Signature</code> headers</li>
 </ol>
 <p>See <a href="../signatures/#rest-request-signing">Message Signatures - REST Request Signing</a>
@@ -3918,7 +3918,7 @@ for complete algorithm.</p>
 <ol>
 <li>Parse <code>Signature-Input</code> to extract <code>keyid</code> and signed components</li>
 <li>Fetch business's UCP profile from <code>/.well-known/ucp</code> (cache as appropriate)</li>
-<li>Locate key in <code>signing_keys</code> with matching <code>kid</code></li>
+<li>Locate key in <code>keys</code> with matching <code>kid</code></li>
 <li>Verify <code>Content-Digest</code> matches SHA-256 of raw body</li>
 <li>Reconstruct signature base and verify signature</li>
 </ol>
@@ -3992,72 +3992,7 @@ zero-downtime key rotation procedures.</p>
 </tbody>
 </table>
 <h3 id="postal-address">Postal Address<a class="headerlink" href="#postal-address" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Type</th>
-<th style="text-align: left;">Required</th>
-<th style="text-align: left;">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">extended_address</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">An address extension such as an apartment number, C/O or alternative name.</td>
-</tr>
-<tr>
-<td style="text-align: left;">street_address</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">The street address.</td>
-</tr>
-<tr>
-<td style="text-align: left;">address_locality</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">The locality in which the street address is, and which is in the region. For example, Mountain View.</td>
-</tr>
-<tr>
-<td style="text-align: left;">address_region</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">The region in which the locality is, and which is in the country. Required for applicable countries (i.e. state in US, province in CA). For example, California or another appropriate first-level Administrative division.</td>
-</tr>
-<tr>
-<td style="text-align: left;">address_country</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">The country. Recommended to be in 2-letter ISO 3166-1 alpha-2 format, for example "US". For backward compatibility, a 3-letter ISO 3166-1 alpha-3 country code such as "SGP" or a full country name such as "Singapore" can also be used.</td>
-</tr>
-<tr>
-<td style="text-align: left;">postal_code</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">The postal code. For example, 94043.</td>
-</tr>
-<tr>
-<td style="text-align: left;">first_name</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">Optional. First name of the contact associated with the address.</td>
-</tr>
-<tr>
-<td style="text-align: left;">last_name</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">Optional. Last name of the contact associated with the address.</td>
-</tr>
-<tr>
-<td style="text-align: left;">phone_number</td>
-<td style="text-align: left;">string</td>
-<td style="text-align: left;">No</td>
-<td style="text-align: left;">Optional. Phone number of the contact associated with the address.</td>
-</tr>
-</tbody>
-</table>
+<p>See <a href="/pr-test/draft/specification/reference/#postal-address">Postal Address</a> in the <a href="/pr-test/draft/specification/reference/">Schema Reference</a> for the canonical field definition.</p>
 <h3 id="response">Response<a class="headerlink" href="#response" title="Permanent link">&para;</a></h3>
 <p>Capability reference in responses. Only name/version required to confirm active capabilities.</p>
 <table>
@@ -4102,7 +4037,7 @@ zero-downtime key rotation procedures.</p>
 </tr>
 <tr>
 <td style="text-align: left;">extends</td>
-<td style="text-align: left;">OneOf[]</td>
+<td style="text-align: left;">OneOf[<code>string</code>, <code>array</code>]</td>
 <td style="text-align: left;">No</td>
 <td style="text-align: left;">Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions.</td>
 </tr>

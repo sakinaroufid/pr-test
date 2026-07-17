@@ -258,11 +258,11 @@ Request body for catalog lookup.
 
 ### Lookup Response
 
-| Name     | Type          | Required | Description                                                                                                                                         |
-| -------- | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp      | any           | **Yes**  | UCP metadata for catalog responses.                                                                                                                 |
-| products | Array[any]    | **Yes**  | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
-| messages | Array[object] | No       | Errors, warnings, or informational messages about the requested items.                                                                              |
+| Name     | Type           | Required | Description                                                                                                                                         |
+| -------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp      | any            | **Yes**  | UCP metadata for catalog responses.                                                                                                                 |
+| products | Array[Product] | **Yes**  | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
+| messages | Array[object]  | No       | Errors, warnings, or informational messages about the requested items.                                                                              |
 
 #### Lookup Example
 
@@ -676,11 +676,7 @@ A product in a get_product response, extended with effective selections and avai
 
 ### Error Response
 
-| Name         | Type                                                                | Required | Description                                                       |
-| ------------ | ------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| ucp          | any                                                                 | **Yes**  | UCP protocol metadata. Status MUST be 'error' for error response. |
-| messages     | Array\[[Message](/pr-test/draft/specification/reference/#message)\] | **Yes**  | Array of messages describing why the operation failed.            |
-| continue_url | string                                                              | No       | URL for buyer handoff or session recovery.                        |
+See [Error Response](/pr-test/draft/specification/reference/#error-response) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ## Conformance
 

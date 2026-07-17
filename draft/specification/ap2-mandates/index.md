@@ -64,7 +64,7 @@ Businesses declare support by adding `dev.ucp.shopping.ap2_mandate` to their `ca
 
 ### Platform Profile Advertisement
 
-Platforms declare support in their profile. If the platform is operating under the trusted platform provider model, the platform **MUST** provide at least one key in the top-level `signing_keys` array in their profile.
+Platforms declare support in their profile. If the platform is operating under the trusted platform provider model, the platform **MUST** provide at least one key in the top-level `keys` array in their profile.
 
 ### Activation and Session Locking
 
@@ -79,7 +79,7 @@ Platforms declare support in their profile. If the platform is operating under t
 
 To utilize this extension, a public signing key **MUST** be available for the business to verify the mandate's signature.
 
-- **Platform Provider Flow:** Key provided in the platform profile's `signing_keys`.
+- **Platform Provider Flow:** Key provided in the platform profile's `keys`.
 - **User Credential Flow:** Key bound to the digital payment credential.
 
 If a public key cannot be resolved, or if the signature is invalid, the business **MUST** return an error.
@@ -88,12 +88,14 @@ If a public key cannot be resolved, or if the signature is invalid, the business
 
 This extension uses the cryptographic primitives defined in the [Message Signatures](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/index.md) specification:
 
-- **Algorithms:** ES256 (required), ES384, ES512
+- **Algorithm:** per AP2's Checkout JWT signing rule — AP2 v0.2 requires ECDSA (`ES256`/`ES384`/`ES512`); see the note below.
 - **Canonicalization:** JCS ([RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785))
 - **Key Format:** JWK ([RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517))
-- **Key Discovery:** `signing_keys[]` in `/.well-known/ucp` (see [Key Discovery](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#key-discovery))
+- **Key Discovery:** `keys[]` in `/.well-known/ucp` (see [Key Discovery](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#key-discovery))
 
-See [Message Signatures](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/index.md) for complete details on algorithms, key format, and key rotation.
+See [Message Signatures](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/index.md) for key format and rotation.
+
+> **Note (algorithm requirement).** AP2 binds the Payment Mandate to the Checkout via `hash(checkout_jwt)`; the underlying security property is per-session unpredictability of the signed bytes — which UCP's unique per-session Checkout `id` supplies structurally. AP2 v0.2 is internally inconsistent on how to require this: `specification.md` states an algorithm-class rule (non-deterministic only, e.g. ECDSA), while the Security & Privacy considerations state an entropy rule satisfied by any algorithm given sufficient payload entropy. [AP2 #268](https://github.com/google-agentic-commerce/AP2/issues/268) tracks converging on the entropy formulation. Follow AP2 for the authoritative rule; under the entropy reading a UCP Checkout JWT may be signed with any algorithm (including Ed25519), letting one key serve both AP2 mandate signing and Web Bot Auth.
 
 ### Business Authorization
 
@@ -120,10 +122,10 @@ The `merchant_authorization` value is a JWS with detached payload in the format 
 
 **JWS Header Claims:**
 
-| Claim | Type   | Required | Description                                      |
-| ----- | ------ | -------- | ------------------------------------------------ |
-| `alg` | string | Yes      | Signature algorithm (`ES256`, `ES384`, `ES512`)  |
-| `kid` | string | Yes      | Key ID referencing the business's `signing_keys` |
+| Claim | Type   | Required | Description                                        |
+| ----- | ------ | -------- | -------------------------------------------------- |
+| `alg` | string | Yes      | Signature algorithm accepted by AP2 (e.g. `ES256`) |
+| `kid` | string | Yes      | Key ID referencing the business's `keys`           |
 
 **Signature Computation:**
 
@@ -198,7 +200,7 @@ Checkout extended with AP2 mandate support.
 | attribution  | object        | No       | Platform-emitted referral and conversion-event context — campaign identifiers, click IDs, source/medium markers, etc. The same parameters platforms communicate via URL query parameters in browser-based flows.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | status       | string        | **Yes**  | Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details. **Enum:** `incomplete`, `requires_escalation`, `ready_for_complete`, `complete_in_progress`, `completed`, `canceled`                                                                                                                                                                                                                                                                                                                                                                                                         |
 | currency     | string        | **Yes**  | ISO 4217 currency code reflecting the merchant's market determination. Derived from address, context, and geo IP—buyers provide signals, merchants determine currency.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| totals       | Array[any]    | **Yes**  | Different cart totals.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| totals       | Array[Total]  | **Yes**  | Different cart totals.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | messages     | Array[object] | No       | List of messages with error and info about the checkout session state.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | links        | Array[object] | **Yes**  | Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | expires_at   | string        | No       | RFC 3339 expiry timestamp. Default TTL is 6 hours from creation if not sent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -248,7 +250,7 @@ verify_merchant_authorization(checkout, merchant_profile):
 
     // Decode and validate header
     header = json_decode(base64url_decode(encoded_header))
-    assert header.alg in ["ES256", "ES384", "ES512"]
+    assert header.alg in ap2_accepted_algorithms  // ES256/ES384/ES512 per AP2 v0.2
 
     // Reconstruct signed payload (checkout minus ap2)
     payload = checkout without "ap2" field
@@ -258,7 +260,7 @@ verify_merchant_authorization(checkout, merchant_profile):
     signing_input = encoded_header + "." + base64url_encode(canonical_bytes)
 
     // Get business's public key and verify
-    public_key = get_key_by_kid(merchant_profile.signing_keys, header.kid)
+    public_key = get_key_by_kid(merchant_profile.keys, header.kid)
     return verify(encoded_signature, signing_input, public_key, header.alg)
 ```
 
@@ -350,7 +352,7 @@ Upon receiving the `complete` request, the business **MUST**:
    payload = embedded_checkout without "ap2" field
    signing_input = encoded_header + "." + base64url_encode(jcs_canonicalize(payload))
 
-   my_key = get_key_by_kid(my_signing_keys, header.kid)
+   my_key = get_key_by_kid(my_keys, header.kid)
    verify(encoded_signature, signing_input, my_key, header.alg)
    ```
 
@@ -363,8 +365,6 @@ The business passes the `token` (composite object) to their Payment Handler / PS
 ## Schema
 
 ### Business Authorization
-
-JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response body (excluding ap2 field). Format: `<base64url-header>..<base64url-signature>`. The header MUST contain 'alg' (ES256/ES384/ES512) and 'kid' claims. The signature covers both the header and JCS-canonicalized checkout payload.
 
 JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response body (excluding ap2 field). Format: `<base64url-header>..<base64url-signature>`. The header MUST contain 'alg' (ES256/ES384/ES512) and 'kid' claims. The signature covers both the header and JCS-canonicalized checkout payload.
 
@@ -384,8 +384,6 @@ AP2 extension data including merchant authorization.
 
 SD-JWT+kb credential in `ap2.checkout_mandate`. Proving user authorization for the checkout. Contains the full checkout including `ap2.merchant_authorization`.
 
-SD-JWT+kb credential in `ap2.checkout_mandate`. Proving user authorization for the checkout. Contains the full checkout including `ap2.merchant_authorization`.
-
 **Pattern:** `^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+(~[A-Za-z0-9_-]+)*$`
 
 ### AP2 Complete Request
@@ -402,15 +400,14 @@ AP2 extension data including checkout mandate.
 
 Error codes specific to AP2 mandate verification.
 
-Error codes specific to AP2 mandate verification.
-
 **Enum:** `mandate_required`, `agent_missing_key`, `mandate_invalid_signature`, `mandate_expired`, `mandate_scope_mismatch`, `merchant_authorization_invalid`, `merchant_authorization_missing`
 
 | Error Code                       | Description                                                       |
 | -------------------------------- | ----------------------------------------------------------------- |
 | `mandate_required`               | AP2 was negotiated, but the request lacks `ap2.checkout_mandate`. |
-| `agent_missing_key`              | Platform profile lacks a valid `signing_keys` entry.              |
+| `agent_missing_key`              | Platform profile lacks a valid `keys` entry.                      |
 | `mandate_invalid_signature`      | The mandate signature cannot be verified.                         |
 | `mandate_expired`                | The mandate `exp` timestamp has passed.                           |
 | `mandate_scope_mismatch`         | The mandate is bound to a different checkout.                     |
 | `merchant_authorization_invalid` | The business authorization signature could not be verified.       |
+| `merchant_authorization_missing` | The checkout response omits `ap2.merchant_authorization`.         |

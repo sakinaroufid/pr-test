@@ -2854,7 +2854,7 @@ and the platform.</p>
 <h3 id="platform-profile-advertisement">Platform Profile Advertisement<a class="headerlink" href="#platform-profile-advertisement" title="Permanent link">&para;</a></h3>
 <p>Platforms declare support in their profile. If the platform is operating under
 the trusted platform provider model, the platform <strong>MUST</strong> provide at least one
-key in the top-level <code>signing_keys</code> array in their profile.</p>
+key in the top-level <code>keys</code> array in their profile.</p>
 <h3 id="activation-and-session-locking">Activation and Session Locking<a class="headerlink" href="#activation-and-session-locking" title="Permanent link">&para;</a></h3>
 <ol>
 <li>The platform advertises its profile URI (transport-specific mechanism).</li>
@@ -2873,7 +2873,7 @@ key in the top-level <code>signing_keys</code> array in their profile.</p>
 <p>To utilize this extension, a public signing key <strong>MUST</strong> be available for the
 business to verify the mandate's signature.</p>
 <ul>
-<li><strong>Platform Provider Flow:</strong> Key provided in the platform profile's <code>signing_keys</code>.</li>
+<li><strong>Platform Provider Flow:</strong> Key provided in the platform profile's <code>keys</code>.</li>
 <li><strong>User Credential Flow:</strong> Key bound to the digital payment credential.</li>
 </ul>
 <p>If a public key cannot be resolved, or if the signature is invalid, the business
@@ -2882,14 +2882,29 @@ business to verify the mandate's signature.</p>
 <p>This extension uses the cryptographic primitives defined in the
 <a href="../signatures/">Message Signatures</a> specification:</p>
 <ul>
-<li><strong>Algorithms:</strong> ES256 (required), ES384, ES512</li>
+<li><strong>Algorithm:</strong> per AP2's Checkout JWT signing rule — AP2 v0.2 requires
+  ECDSA (<code>ES256</code>/<code>ES384</code>/<code>ES512</code>); see the note below.</li>
 <li><strong>Canonicalization:</strong> JCS (<a href="https://datatracker.ietf.org/doc/html/rfc8785">RFC 8785</a>)</li>
 <li><strong>Key Format:</strong> JWK (<a href="https://datatracker.ietf.org/doc/html/rfc7517">RFC 7517</a>)</li>
-<li><strong>Key Discovery:</strong> <code>signing_keys[]</code> in <code>/.well-known/ucp</code> (see
+<li><strong>Key Discovery:</strong> <code>keys[]</code> in <code>/.well-known/ucp</code> (see
   <a href="../overview/#key-discovery">Key Discovery</a>)</li>
 </ul>
-<p>See <a href="../signatures/">Message Signatures</a> for complete details on algorithms,
-key format, and key rotation.</p>
+<p>See <a href="../signatures/">Message Signatures</a> for key format and rotation.</p>
+<blockquote>
+<p><strong>Note (algorithm requirement).</strong> AP2 binds the Payment Mandate to the
+Checkout via <code>hash(checkout_jwt)</code>; the underlying security property is
+per-session unpredictability of the signed bytes — which UCP's unique
+per-session Checkout <code>id</code> supplies structurally. AP2 v0.2 is internally
+inconsistent on how to require this: <code>specification.md</code> states an
+algorithm-class rule (non-deterministic only, e.g. ECDSA), while the
+Security &amp; Privacy considerations state an entropy rule satisfied by any
+algorithm given sufficient payload entropy.
+<a href="https://github.com/google-agentic-commerce/AP2/issues/268">AP2 #268</a>
+tracks converging on the entropy formulation. Follow AP2 for the
+authoritative rule; under the entropy reading a UCP Checkout JWT may be
+signed with any algorithm (including Ed25519), letting one key serve both
+AP2 mandate signing and Web Bot Auth.</p>
+</blockquote>
 <h3 id="business-authorization">Business Authorization<a class="headerlink" href="#business-authorization" title="Permanent link">&para;</a></h3>
 <p>Businesses <strong>MUST</strong> embed their signature in the checkout response body under
 <code>ap2.merchant_authorization</code> using <strong>JWS Detached Content</strong> format
@@ -2927,13 +2942,13 @@ transmitted separately (as the checkout body itself).</p>
 <td style="text-align: left;"><code>alg</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Yes</td>
-<td style="text-align: left;">Signature algorithm (<code>ES256</code>, <code>ES384</code>, <code>ES512</code>)</td>
+<td style="text-align: left;">Signature algorithm accepted by AP2 (e.g. <code>ES256</code>)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>kid</code></td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;">Yes</td>
-<td style="text-align: left;">Key ID referencing the business's <code>signing_keys</code></td>
+<td style="text-align: left;">Key ID referencing the business's <code>keys</code></td>
 </tr>
 </tbody>
 </table>
@@ -3085,7 +3100,7 @@ with <code>ap2.merchant_authorization</code> embedded in the response body.</p>
 </tr>
 <tr>
 <td style="text-align: left;">totals</td>
-<td style="text-align: left;">Array[any]</td>
+<td style="text-align: left;">Array[Total]</td>
 <td style="text-align: left;"><strong>Yes</strong></td>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
@@ -3170,7 +3185,7 @@ with <code>ap2.merchant_authorization</code> embedded in the response body.</p>
 </span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
 </span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    // Decode and validate header
 </span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    header = json_decode(base64url_decode(encoded_header))
-</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    assert header.alg in [&quot;ES256&quot;, &quot;ES384&quot;, &quot;ES512&quot;]
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    assert header.alg in ap2_accepted_algorithms  // ES256/ES384/ES512 per AP2 v0.2
 </span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
 </span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    // Reconstruct signed payload (checkout minus ap2)
 </span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    payload = checkout without &quot;ap2&quot; field
@@ -3180,7 +3195,7 @@ with <code>ap2.merchant_authorization</code> embedded in the response body.</p>
 </span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    signing_input = encoded_header + &quot;.&quot; + base64url_encode(canonical_bytes)
 </span><span id="__span-4-16"><a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>
 </span><span id="__span-4-17"><a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>    // Get business&#39;s public key and verify
-</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    public_key = get_key_by_kid(merchant_profile.signing_keys, header.kid)
+</span><span id="__span-4-18"><a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>    public_key = get_key_by_kid(merchant_profile.keys, header.kid)
 </span><span id="__span-4-19"><a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>    return verify(encoded_signature, signing_input, public_key, header.alg)
 </span></code></pre></div>
 <h3 id="step-2-user-consent-mandate-generation">Step 2: User Consent &amp; Mandate Generation<a class="headerlink" href="#step-2-user-consent-mandate-generation" title="Permanent link">&para;</a></h3>
@@ -3286,7 +3301,7 @@ request:</p>
 </span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>payload = embedded_checkout without &quot;ap2&quot; field
 </span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>signing_input = encoded_header + &quot;.&quot; + base64url_encode(jcs_canonicalize(payload))
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>my_key = get_key_by_kid(my_signing_keys, header.kid)
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>my_key = get_key_by_kid(my_keys, header.kid)
 </span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>verify(encoded_signature, signing_input, my_key, header.alg)
 </span></code></pre></div>
 </li>
@@ -3303,7 +3318,6 @@ including signature validation, expiration, and correlation with the
 checkout.</p>
 <h2 id="schema">Schema<a class="headerlink" href="#schema" title="Permanent link">&para;</a></h2>
 <h3 id="merchant-authorization">Business Authorization<a class="headerlink" href="#merchant-authorization" title="Permanent link">&para;</a></h3>
-<p>JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response body (excluding ap2 field). Format: <code>&lt;base64url-header&gt;..&lt;base64url-signature&gt;</code>. The header MUST contain 'alg' (ES256/ES384/ES512) and 'kid' claims. The signature covers both the header and JCS-canonicalized checkout payload.</p>
 <p>JWS Detached Content signature (RFC 7515 Appendix F) over the checkout response body (excluding ap2 field). Format: <code>&lt;base64url-header&gt;..&lt;base64url-signature&gt;</code>. The header MUST contain 'alg' (ES256/ES384/ES512) and 'kid' claims. The signature covers both the header and JCS-canonicalized checkout payload.</p>
 <p><strong>Pattern:</strong> <code>^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$</code></p>
 <h3 id="ap2-checkout-response">AP2 Checkout Response<a class="headerlink" href="#ap2-checkout-response" title="Permanent link">&para;</a></h3>
@@ -3329,7 +3343,6 @@ checkout.</p>
 </table>
 <h3 id="checkout-mandate">Checkout Mandate<a class="headerlink" href="#checkout-mandate" title="Permanent link">&para;</a></h3>
 <p>SD-JWT+kb credential in <code>ap2.checkout_mandate</code>. Proving user authorization for the checkout. Contains the full checkout including <code>ap2.merchant_authorization</code>.</p>
-<p>SD-JWT+kb credential in <code>ap2.checkout_mandate</code>. Proving user authorization for the checkout. Contains the full checkout including <code>ap2.merchant_authorization</code>.</p>
 <p><strong>Pattern:</strong> <code>^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+(~[A-Za-z0-9_-]+)*$</code></p>
 <h3 id="ap2-complete-request">AP2 Complete Request<a class="headerlink" href="#ap2-complete-request" title="Permanent link">&para;</a></h3>
 <p>The <code>ap2</code> object included in COMPLETE checkout requests.</p>
@@ -3354,7 +3367,6 @@ checkout.</p>
 </table>
 <h3 id="error-codes">Error Codes<a class="headerlink" href="#error-codes" title="Permanent link">&para;</a></h3>
 <p>Error codes specific to AP2 mandate verification.</p>
-<p>Error codes specific to AP2 mandate verification.</p>
 <p><strong>Enum:</strong> <code>mandate_required</code>, <code>agent_missing_key</code>, <code>mandate_invalid_signature</code>, <code>mandate_expired</code>, <code>mandate_scope_mismatch</code>, <code>merchant_authorization_invalid</code>, <code>merchant_authorization_missing</code></p>
 <table>
 <thead>
@@ -3370,7 +3382,7 @@ checkout.</p>
 </tr>
 <tr>
 <td style="text-align: left;"><code>agent_missing_key</code></td>
-<td style="text-align: left;">Platform profile lacks a valid <code>signing_keys</code> entry.</td>
+<td style="text-align: left;">Platform profile lacks a valid <code>keys</code> entry.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>mandate_invalid_signature</code></td>
@@ -3387,6 +3399,10 @@ checkout.</p>
 <tr>
 <td style="text-align: left;"><code>merchant_authorization_invalid</code></td>
 <td style="text-align: left;">The business authorization signature could not be verified.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>merchant_authorization_missing</code></td>
+<td style="text-align: left;">The checkout response omits <code>ap2.merchant_authorization</code>.</td>
 </tr>
 </tbody>
 </table>

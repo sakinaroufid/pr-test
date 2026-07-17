@@ -137,7 +137,7 @@ Expectations are buyer-facing groupings representing when/how items will be deli
 | -------------- | ------------------------------------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------- |
 | id             | string                                                                   | **Yes**  | Expectation identifier.                                                                                     |
 | line_items     | Array[object]                                                            | **Yes**  | Which line items and quantities are in this expectation.                                                    |
-| method_type    | string                                                                   | **Yes**  | Delivery method type (shipping, pickup, digital). **Enum:** `shipping`, `pickup`, `digital`                 |
+| method_type    | string                                                                   | **Yes**  | Delivery method type. Well-known values: `shipping`, `pickup`, `digital`; additional values MAY be used.    |
 | destination    | [Postal Address](/pr-test/draft/specification/reference/#postal-address) | **Yes**  | Delivery destination address.                                                                               |
 | description    | string                                                                   | No       | Human-readable delivery description (e.g., 'Arrives in 5-8 business days').                                 |
 | fulfillable_on | string                                                                   | No       | When this expectation can be fulfilled: 'now' or ISO 8601 timestamp for future date (backorder, pre-order). |
@@ -467,7 +467,7 @@ POST /webhooks/ucp/orders HTTP/1.1
 Host: platform.example.com
 Content-Type: application/json
 UCP-Agent: profile="https://merchant.example/.well-known/ucp"
-Content-Digest: sha-256=:X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=:
+Content-Digest: sha-256=:X48E9q...:
 Signature-Input: sig1=("@method" "@authority" "@path" "content-digest" "content-type");keyid="merchant-2026"
 Signature: sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:
 
@@ -478,7 +478,7 @@ Signature: sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:
 
 1. Compute SHA-256 digest of the raw request body and set `Content-Digest` header
 1. Build signature base per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421)
-1. Sign using a key from `signing_keys` in the business's UCP profile
+1. Sign using a key from `keys` in the business's UCP profile
 1. Set `Signature-Input` and `Signature` headers
 
 See [Message Signatures - REST Request Signing](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-signing) for complete algorithm.
@@ -489,7 +489,7 @@ See [Message Signatures - REST Request Signing](https://sakinaroufid.github.io/p
 
 1. Parse `Signature-Input` to extract `keyid` and signed components
 1. Fetch business's UCP profile from `/.well-known/ucp` (cache as appropriate)
-1. Locate key in `signing_keys` with matching `kid`
+1. Locate key in `keys` with matching `kid`
 1. Verify `Content-Digest` matches SHA-256 of raw body
 1. Reconstruct signature base and verify signature
 
@@ -536,30 +536,20 @@ See [Message Signatures - Key Rotation](https://sakinaroufid.github.io/pr-test/d
 
 ### Postal Address
 
-| Name             | Type   | Required | Description                                                                                                                                                                                                                               |
-| ---------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| extended_address | string | No       | An address extension such as an apartment number, C/O or alternative name.                                                                                                                                                                |
-| street_address   | string | No       | The street address.                                                                                                                                                                                                                       |
-| address_locality | string | No       | The locality in which the street address is, and which is in the region. For example, Mountain View.                                                                                                                                      |
-| address_region   | string | No       | The region in which the locality is, and which is in the country. Required for applicable countries (i.e. state in US, province in CA). For example, California or another appropriate first-level Administrative division.               |
-| address_country  | string | No       | The country. Recommended to be in 2-letter ISO 3166-1 alpha-2 format, for example "US". For backward compatibility, a 3-letter ISO 3166-1 alpha-3 country code such as "SGP" or a full country name such as "Singapore" can also be used. |
-| postal_code      | string | No       | The postal code. For example, 94043.                                                                                                                                                                                                      |
-| first_name       | string | No       | Optional. First name of the contact associated with the address.                                                                                                                                                                          |
-| last_name        | string | No       | Optional. Last name of the contact associated with the address.                                                                                                                                                                           |
-| phone_number     | string | No       | Optional. Phone number of the contact associated with the address.                                                                                                                                                                        |
+See [Postal Address](/pr-test/draft/specification/reference/#postal-address) in the [Schema Reference](/pr-test/draft/specification/reference/) for the canonical field definition.
 
 ### Response
 
 Capability reference in responses. Only name/version required to confirm active capabilities.
 
-| Name    | Type    | Required | Description                                                                                                                     |
-| ------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| version | string  | **Yes**  | Entity version in YYYY-MM-DD format.                                                                                            |
-| spec    | string  | No       | URL to human-readable specification document.                                                                                   |
-| schema  | string  | No       | URL to JSON Schema defining this entity's structure and payloads.                                                               |
-| id      | string  | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
-| config  | object  | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
-| extends | OneOf[] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
+| Name    | Type                       | Required | Description                                                                                                                     |
+| ------- | -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| version | string                     | **Yes**  | Entity version in YYYY-MM-DD format.                                                                                            |
+| spec    | string                     | No       | URL to human-readable specification document.                                                                                   |
+| schema  | string                     | No       | URL to JSON Schema defining this entity's structure and payloads.                                                               |
+| id      | string                     | No       | Unique identifier for this entity instance. Used to disambiguate when multiple instances exist.                                 |
+| config  | object                     | No       | Entity-specific configuration. Structure defined by each entity's schema.                                                       |
+| extends | OneOf\[`string`, `array`\] | No       | Parent capability(s) this extends. Present for extensions, absent for root capabilities. Use array for multi-parent extensions. |
 
 ### Total
 
