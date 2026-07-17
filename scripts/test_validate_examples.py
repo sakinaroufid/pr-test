@@ -41,11 +41,17 @@ import validate_examples as v  # noqa: E402
 # -----------------------------------------------------------
 
 _RESULTS: list[tuple[str, bool, str]] = []
+_SKIPPED: list[tuple[str, str]] = []
 
 
 def _check(name: str, condition: bool, detail: str = "") -> None:
   """Record a test result."""
   _RESULTS.append((name, condition, detail))
+
+
+def _skip(name: str, reason: str) -> None:
+  """Record a test skipped because a gated external dependency is missing."""
+  _SKIPPED.append((name, reason))
 
 
 def _report() -> int:
@@ -56,7 +62,9 @@ def _report() -> int:
     status = "PASS" if ok else "FAIL"
     suffix = f" \u2014 {detail}" if detail and not ok else ""
     print(f"  {status}  {name}{suffix}")
-  print(f"\n{passed} passed, {len(failed)} failed")
+  for name, reason in _SKIPPED:
+    print(f"  SKIP  {name} \u2014 {reason}")
+  print(f"\n{passed} passed, {len(failed)} failed, {len(_SKIPPED)} skipped")
   return 0 if not failed else 1
 
 
@@ -375,11 +383,7 @@ def _process(md: str) -> v.Result:
 def test_process_block_integration() -> None:
   """End-to-end through process_block. Requires ucp-schema on PATH."""
   if not _has_ucp_schema():
-    _check(
-      "process_block_integration",
-      False,
-      "SKIPPED: ucp-schema binary not on PATH",
-    )
+    _skip("process_block_integration", "ucp-schema binary not on PATH")
     return
 
   # Trailing comma is now rejected (was tolerated before). Assert on the
