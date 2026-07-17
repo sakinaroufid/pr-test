@@ -32,4 +32,5 @@ specifications:
 - [Roadmap](https://sakinaroufid.github.io/pr-test/documentation/roadmap/index.md): Future development and planned capabilities of UCP.
 - [Schema Authoring](https://sakinaroufid.github.io/pr-test/documentation/schema-authoring/index.md): Comprehensive guidelines and JSON Schema design conventions when authoring or extending UCP schemas, including strict versioning and registry patterns.
 - [Versioning](https://sakinaroufid.github.io/pr-test/versioning/index.md): UCP's strict date-based versioning policy (YYYY-MM-DD) and compatibility guidelines for managing breaking changes and release branches.
+- [Announcements](https://sakinaroufid.github.io/pr-test/documentation/announcements/index.md): General announcements, release notes, and community updates for the Universal Commerce Protocol.
 

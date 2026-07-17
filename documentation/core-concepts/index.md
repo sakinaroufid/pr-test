@@ -144,7 +144,7 @@ The result is a minimal, mutually compatible capability set. Businesses include 
 
 ### Profile Structure
 
-Both business and platform profiles share a common base structure — a `ucp` object declaring protocol version, services, capabilities, and payment handlers, alongside a `signing_keys` array of JWK public keys. The `ucp` object differs between the two: the business profile uses a business-specific schema (hosted at `/.well-known/ucp`), while the platform profile uses a platform-specific schema (hosted at a URI the platform advertises per-request). This dual-purpose profile — capabilities *and* keys in a single document — means discovery and authentication are resolved together.
+Both business and platform profiles share a common base structure — a `ucp` object declaring protocol version, services, capabilities, and payment handlers, alongside a `keys` array of JWK public keys (a valid [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517) JWK Set, reusable as a Web Bot Auth key source). The `ucp` object differs between the two: the business profile uses a business-specific schema (hosted at `/.well-known/ucp`), while the platform profile uses a platform-specific schema (hosted at a URI the platform advertises per-request). This dual-purpose profile — capabilities *and* keys in a single document — means discovery and authentication are resolved together.
 
 ```json
 {
@@ -183,13 +183,13 @@ Both business and platform profiles share a common base structure — a `ucp` ob
       }]
     }
   },
-  "signing_keys": [{ "kid": "key_2026", "kty": "EC", "crv": "P-256", "x": "WbbXwVYGdJoP4Xm3qCkGvBRcRvKtEfXDbWvPzpPS8LA", "y": "sP4jHHxYqC89HBo8TjrtVOAGHfJDflYxw7MFMxuFMPY", "alg": "ES256" }]
+  "keys": [{ "kid": "key_2026", "kty": "EC", "crv": "P-256", "x": "WbbXwVYGdJoP4Xm3qCkGvBRcRvKtEfXDbWvPzpPS8LA", "y": "sP4jHHxYqC89HBo8TjrtVOAGHfJDflYxw7MFMxuFMPY", "alg": "ES256" }]
 }
 ```
 
 ## Namespace Governance
 
-UCP uses reverse-domain naming to embed governance authority directly into capability and service identifiers. This eliminates the need for a central registry — domain owners control their own namespace.
+UCP uses reverse-domain naming to embed governance authority directly into its reverse-domain identifiers. This eliminates the need for a central registry — domain owners control their own namespace.
 
 ```text
 {reverse-domain}.{service}.{capability}
@@ -201,7 +201,9 @@ UCP uses reverse-domain naming to embed governance authority directly into capab
 | `dev.shopify.catalog`               | shopify.dev | Shopify            |
 | `com.example.payments.installments` | example.com | example.com        |
 
-The `spec` and `schema` URLs declared in a capability must originate from the namespace authority domain. Platforms **MUST** validate this binding to prevent spoofed capabilities.
+Reverse-domain names are used both as collision-safe **identifiers** (keys and references) and by **entities** — capabilities, services, and payment handlers — that declare a `schema` URL. An entity's `schema` URL must originate from its namespace authority domain. This guarantees **provenance** — that the reverse-domain name is controlled by the domain owner — not that the entity is trustworthy; whether to trust or support it remains the client's decision.
+
+Platforms **MUST** validate this binding for declared `schema` URLs and **MUST** reject entities that fail it. Identifiers carry no fetched URL, and the `spec` (documentation) URL is not authority-bound (any `https` origin). See [Authority Binding](/pr-test/latest/specification/overview.md#authority-binding) for the normative algorithm.
 
 The `dev.ucp.*` namespace is reserved exclusively for capabilities governed by the UCP Tech Council. Any vendor can define and publish capabilities under their own domain — `org.acme.*` — without UCP maintainer approval. Vendor capabilities follow the same extension model, meaning they can extend UCP base capabilities (e.g., `org.acme.loyalty` extending `dev.ucp.shopping.checkout`) or define entirely new ones. Because negotiation is always opt-in, vendor capabilities only activate when both parties declare them, keeping the protocol decentralized by design.
 
@@ -244,7 +246,7 @@ Key lookup:
 
 1. Obtain the signer's profile URL (from `UCP-Agent` header or `/.well-known/ucp`).
 1. Fetch and cache the profile.
-1. Match the `keyid` from `Signature-Input` to a `kid` in `signing_keys[]`.
+1. Match the `keyid` from `Signature-Input` to a `kid` in `keys[]`.
 1. Verify the signature using the corresponding public key.
 
 ### Authentication Mechanisms
