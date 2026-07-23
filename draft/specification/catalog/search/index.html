@@ -2537,6 +2537,10 @@ queries, filtering by category and price, and pagination.</p>
 </tr>
 </tbody>
 </table>
+<p>Like every other operation, <code>search_catalog</code> MAY return the standard error
+envelope (<code>ucp.status: "error"</code> with <code>messages</code>) in place of a search
+response payload when the request cannot be served. See
+<a href="../../overview/#error-handling">Error Handling</a>.</p>
 <h2 id="search-inputs">Search Inputs<a class="headerlink" href="#search-inputs" title="Permanent link">&para;</a></h2>
 <p>A valid search request MUST include at least one of: a <code>query</code> string,
 one or more <code>filters</code>, or an extension-defined input. When <code>query</code> is

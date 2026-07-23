@@ -2828,6 +2828,10 @@ from the response.</p>
 </tr>
 </tbody>
 </table>
+<p>Like every other operation, <code>lookup_catalog</code> MAY return the standard error
+envelope (<code>ucp.status: "error"</code> with <code>messages</code>) in place of a lookup
+response payload when the request cannot be served. See
+<a href="../../overview/#error-handling">Error Handling</a>.</p>
 <hr />
 <h2 id="get-product-get_product">Get Product (<code>get_product</code>)<a class="headerlink" href="#get-product-get_product" title="Permanent link">&para;</a></h2>
 <p>Retrieves current product state for a single identifier, with support for

@@ -103,6 +103,8 @@ Maps to the [Catalog Search](https://sakinaroufid.github.io/pr-test/draft/specif
 | pagination | object        | Optional     | Pagination information in responses.                                  |
 | messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
 
+When the request cannot be served, the tool returns a successful JSON-RPC result carrying the standard error envelope (`ucp.status: "error"` with `messages`) instead of a search response payload, mirroring [Product Not Found](#product-not-found) for `get_product`.
+
 #### Search Example
 
 ```json
@@ -263,6 +265,8 @@ Request body for catalog lookup.
 | ucp      | any            | **Required** | UCP metadata for catalog responses.                                                                                                                 |
 | products | Array[Product] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
 | messages | Array[object]  | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
+
+When the request cannot be served, the tool returns a successful JSON-RPC result carrying the standard error envelope (`ucp.status: "error"` with `messages`) instead of a lookup response payload, mirroring [Product Not Found](#product-not-found) for `get_product`.
 
 #### Lookup Example
 

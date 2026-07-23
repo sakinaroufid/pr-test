@@ -3,7 +3,7 @@
   "info": {
     "title": "UCP Shopping Service",
     "description": "Canonical REST interface for UCP Shopping service. Schema references are logical pointers - actual payload shape is determined by negotiated capabilities.\n\n**Endpoint Resolution:** This spec defines operations only. The base URL MUST be obtained from the merchant's discovery profile at `/.well-known/ucp` under `services[\"dev.ucp.shopping\"][transport=rest].endpoint`. The `{endpoint}` server variable below is a placeholder for tooling compatibility.",
-    "version": "2026-07-22"
+    "version": "2026-07-23"
   },
   "servers": [
     {
@@ -86,6 +86,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -95,6 +98,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -156,6 +168,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -165,6 +180,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       },
@@ -190,6 +211,9 @@
           },
           {
             "$ref": "#/components/parameters/idempotency_key"
+          },
+          {
+            "$ref": "#/components/parameters/if_match"
           },
           {
             "$ref": "#/components/parameters/request_id"
@@ -235,6 +259,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -244,6 +271,18 @@
                 }
               }
             }
+          },
+          "412": {
+            "$ref": "#/components/responses/precondition_failed"
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -276,6 +315,9 @@
           },
           {
             "$ref": "#/components/parameters/idempotency_key"
+          },
+          {
+            "$ref": "#/components/parameters/if_match"
           },
           {
             "$ref": "#/components/parameters/request_id"
@@ -321,6 +363,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -330,6 +375,18 @@
                 }
               }
             }
+          },
+          "412": {
+            "$ref": "#/components/responses/precondition_failed"
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -362,6 +419,9 @@
           },
           {
             "$ref": "#/components/parameters/idempotency_key"
+          },
+          {
+            "$ref": "#/components/parameters/if_match"
           },
           {
             "$ref": "#/components/parameters/request_id"
@@ -397,6 +457,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -406,6 +469,18 @@
                 }
               }
             }
+          },
+          "412": {
+            "$ref": "#/components/responses/precondition_failed"
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -487,6 +562,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -557,6 +641,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       },
@@ -636,6 +726,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -712,6 +811,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -790,6 +898,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -868,6 +982,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -938,6 +1058,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -1016,6 +1142,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -1078,6 +1210,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "description": "Delivery rejected. Any non-2xx response is a failed delivery that the business retries."
+          },
+          "5XX": {
+            "description": "Delivery failed. Any non-2xx response is a failed delivery that the business retries."
           }
         }
       }
@@ -1166,6 +1304,15 @@
           "format": "uuid"
         },
         "description": "Ensures duplicate operations don't happen during retries."
+      },
+      "if_match": {
+        "name": "If-Match",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Entity tag of the checkout state this write is based on (RFC 9110 conditional request). On mismatch the business rejects the write with 412 Precondition Failed. See Checkout REST - Concurrency Control."
       },
       "request_id": {
         "name": "Request-Id",
@@ -1272,6 +1419,78 @@
           "type": "string"
         },
         "description": "JCS-canonicalized body digest per RFC 8785. Format: `sha-256=:<base64-digest>:`."
+      },
+      "etag": {
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Strong entity tag for the returned checkout state (RFC 9110). Echo via If-Match on Update, Complete, and Cancel to write conditionally. See Checkout REST - Concurrency Control."
+      }
+    },
+    "responses": {
+      "error": {
+        "description": "Error. The body carries the standard UCP error envelope (`ucp.status: \"error\"` plus `messages`). See the transport specification's Status Codes section for which HTTP status codes apply to each failure class.",
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/signature"
+          },
+          "Signature-Input": {
+            "$ref": "#/components/headers/signature_input"
+          },
+          "Content-Digest": {
+            "$ref": "#/components/headers/content_digest"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
+            }
+          }
+        }
+      },
+      "precondition_failed": {
+        "description": "Precondition failed. The If-Match entity tag does not match the session's current state; no part of the write is applied. The platform re-reads the session, reconciles, and retries with the fresh tag. See Checkout REST - Concurrency Control.",
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/signature"
+          },
+          "Signature-Input": {
+            "$ref": "#/components/headers/signature_input"
+          },
+          "Content-Digest": {
+            "$ref": "#/components/headers/content_digest"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
+            }
+          }
+        }
+      },
+      "idempotency_conflict": {
+        "description": "Idempotency-Key conflict. The key was reused with a request body that does not match the original request; the operation is not executed. See Message Signatures - Replay Protection.",
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/signature"
+          },
+          "Signature-Input": {
+            "$ref": "#/components/headers/signature_input"
+          },
+          "Content-Digest": {
+            "$ref": "#/components/headers/content_digest"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
+            }
+          }
+        }
       }
     },
     "schemas": {
@@ -1324,13 +1543,27 @@
         "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_request"
       },
       "catalog_search_response": {
-        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_response"
+        "oneOf": [
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_response"
+          },
+          {
+            "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
+          }
+        ]
       },
       "catalog_lookup_request": {
         "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_request"
       },
       "catalog_lookup_response": {
-        "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_response"
+        "oneOf": [
+          {
+            "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_response"
+          },
+          {
+            "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
+          }
+        ]
       },
       "catalog_get_product_request": {
         "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/get_product_request"

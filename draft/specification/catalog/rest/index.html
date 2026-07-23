@@ -1706,6 +1706,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#catalog-search-search-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catalog-lookup-lookup-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lookup Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#catalog-lookup-get-product-response" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2695,6 +2717,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#catalog-search-search-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#catalog-lookup-lookup-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lookup Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#catalog-lookup-get-product-response" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2889,42 +2933,7 @@
 </tbody>
 </table>
 <p><strong>Output</strong></p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Type</th>
-<th style="text-align: left;">Requirement</th>
-<th style="text-align: left;">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">ucp</td>
-<td style="text-align: left;">any</td>
-<td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">UCP metadata for catalog responses.</td>
-</tr>
-<tr>
-<td style="text-align: left;">products</td>
-<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#product">Product</a>]</td>
-<td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Products matching the search criteria.</td>
-</tr>
-<tr>
-<td style="text-align: left;">pagination</td>
-<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#pagination-response">Pagination Response</a></td>
-<td style="text-align: left;">Optional</td>
-<td style="text-align: left;">Cursor-based pagination for list operations.</td>
-</tr>
-<tr>
-<td style="text-align: left;">messages</td>
-<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
-<td style="text-align: left;">Optional</td>
-<td style="text-align: left;">Errors, warnings, or informational messages about the search results.</td>
-</tr>
-</tbody>
-</table>
+<p>This object MUST be one of the following types: <a href="/pr-test/draft/specification/catalog/rest/#catalog-search-search-response">Catalog Search Search Response</a>, <a href="/pr-test/draft/specification/reference/#error-response">Error Response</a>.</p>
 <h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="request" name="__tabbed_1" type="radio" /><input id="response" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="request">Request</label><label for="response">Response</label></div>
 <div class="tabbed-content">
@@ -3093,36 +3102,7 @@ applies to all lookups in the batch.</p>
 </tbody>
 </table>
 <p><strong>Output</strong></p>
-<table>
-<thead>
-<tr>
-<th style="text-align: left;">Name</th>
-<th style="text-align: left;">Type</th>
-<th style="text-align: left;">Requirement</th>
-<th style="text-align: left;">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: left;">ucp</td>
-<td style="text-align: left;">any</td>
-<td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">UCP metadata for catalog responses.</td>
-</tr>
-<tr>
-<td style="text-align: left;">products</td>
-<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#product">Product</a>]</td>
-<td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products.</td>
-</tr>
-<tr>
-<td style="text-align: left;">messages</td>
-<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
-<td style="text-align: left;">Optional</td>
-<td style="text-align: left;">Errors, warnings, or informational messages about the requested items.</td>
-</tr>
-</tbody>
-</table>
+<p>This object MUST be one of the following types: <a href="/pr-test/draft/specification/catalog/rest/#catalog-lookup-lookup-response">Catalog Lookup Lookup Response</a>, <a href="/pr-test/draft/specification/reference/#error-response">Error Response</a>.</p>
 <h4 id="example-batch-lookup-with-context">Example: Batch Lookup with Context<a class="headerlink" href="#example-batch-lookup-with-context" title="Permanent link">&para;</a></h4>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="request_1" name="__tabbed_2" type="radio" /><input id="response_1" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="request_1">Request</label><label for="response_1">Response</label></div>
 <div class="tabbed-content">
@@ -3610,6 +3590,9 @@ operations unless otherwise noted.</p>
 </tr>
 </tbody>
 </table>
+<p>The REST service definition (<code>rest.openapi.json</code>) declares these as
+<code>4XX</code>/<code>5XX</code> responses carrying the standard error envelope, so clients
+generated from the service definition receive a typed error shape.</p>
 <h3 id="business-outcomes">Business Outcomes<a class="headerlink" href="#business-outcomes" title="Permanent link">&para;</a></h3>
 <p>All application-level outcomes return HTTP 200 with the UCP envelope and optional
 <code>messages</code> array. See <a href="../#messages-and-error-handling">Catalog Overview</a>
@@ -3717,6 +3700,74 @@ MAY include informational messages indicating which identifiers were not found.<
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Product options with availability signals relative to the effective selections.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="catalog-search-search-response">Search Response<a class="headerlink" href="#catalog-search-search-response" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Requirement</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">ucp</td>
+<td style="text-align: left;">any</td>
+<td style="text-align: left;"><strong>Required</strong></td>
+<td style="text-align: left;">UCP metadata for catalog responses.</td>
+</tr>
+<tr>
+<td style="text-align: left;">products</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;"><strong>Required</strong></td>
+<td style="text-align: left;">Products matching the search criteria.</td>
+</tr>
+<tr>
+<td style="text-align: left;">pagination</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Pagination information in responses.</td>
+</tr>
+<tr>
+<td style="text-align: left;">messages</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Errors, warnings, or informational messages about the search results.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="catalog-lookup-lookup-response">Lookup Response<a class="headerlink" href="#catalog-lookup-lookup-response" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Requirement</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">ucp</td>
+<td style="text-align: left;">any</td>
+<td style="text-align: left;"><strong>Required</strong></td>
+<td style="text-align: left;">UCP metadata for catalog responses.</td>
+</tr>
+<tr>
+<td style="text-align: left;">products</td>
+<td style="text-align: left;">Array[Product]</td>
+<td style="text-align: left;"><strong>Required</strong></td>
+<td style="text-align: left;">Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products.</td>
+</tr>
+<tr>
+<td style="text-align: left;">messages</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Errors, warnings, or informational messages about the requested items.</td>
 </tr>
 </tbody>
 </table>

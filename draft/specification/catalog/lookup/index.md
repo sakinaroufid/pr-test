@@ -79,6 +79,8 @@ Request body for catalog lookup.
 | products | Array[Product] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
 | messages | Array[object]  | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
 
+Like every other operation, `lookup_catalog` MAY return the standard error envelope (`ucp.status: "error"` with `messages`) in place of a lookup response payload when the request cannot be served. See [Error Handling](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling).
+
 ______________________________________________________________________
 
 ## Get Product (`get_product`)

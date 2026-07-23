@@ -3076,6 +3076,32 @@ This operation will be used to cancel a checkout session, if it can be canceled.
 
 This object MUST be one of the following types: [Checkout](/pr-test/draft/specification/checkout/#checkout), [Error Response](/pr-test/draft/specification/reference/#error-response).
 
+### Concurrency Control
+
+Update Checkout is a full replacement, and a checkout session may legitimately have more than one writer: the spec explicitly contemplates an agent and a buyer in a trusted UI driving the same session (see [Continue URL](#continue-url)). Without coordination, two writers that read the same state and then write divergent replacements silently lose one of the updates: last write wins, and neither party is told.
+
+`Idempotency-Key` does not address this. Idempotency collapses *identical* retries of the same request; it neither detects nor serializes two *different* replacement writes racing for the same session.
+
+UCP therefore layers optimistic concurrency onto the state-changing checkout operations (Update, Complete, Cancel):
+
+- The business assigns each checkout state an opaque **entity tag** that changes whenever the stored session state changes, and returns it with every checkout response.
+- The platform echoes the last tag it observed when it writes. If the tag still matches the session's current state, the write proceeds. If it does not, the business rejects the write without applying it; the platform re-reads the session (Get Checkout), reconciles its intended changes with the current state, and retries with the new tag.
+
+Support is discovered from responses themselves: a business that returns entity tags is advertising conditional-write support, and a platform that has never seen a tag has nothing to echo and proceeds unconditionally. No profile configuration is involved.
+
+Bindings define the tag carrier. The [REST binding](https://sakinaroufid.github.io/pr-test/draft/specification/checkout-rest/#concurrency-control) uses standard HTTP conditional requests (`ETag` / `If-Match`, [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110#name-conditional-requests)). Bindings without a native metadata carrier for response tags (MCP, A2A, Embedded) do not define one yet; writes on those bindings remain unconditional.
+
+**Business:**
+
+- **SHOULD** return an entity tag with every checkout response.
+- **MUST**, when returning entity tags, change the tag whenever the stored session state changes, including business-initiated changes (repricing, inventory adjustments), not only platform writes.
+- **MUST** reject a conditional write whose tag does not match the session's current state, without applying any part of it.
+
+**Platform:**
+
+- **SHOULD** write conditionally whenever it has observed an entity tag for the session.
+- **SHOULD**, on rejection, re-read the session, reapply its intended changes on top of the current state, and retry with the fresh tag rather than retrying the stale write verbatim.
+
 ## Transport Bindings
 
 The abstract operations above are bound to specific transport protocols as defined below:
@@ -4635,6 +4661,7 @@ The following headers are defined for the HTTP binding and apply to all operatio
   1. Store the key with the operation result for at least 24 hours.
   1. Return the cached result for duplicate keys whose request body matches the original.
   1. Return `409 Conflict` if the key is reused with a mismatched body. See [Message Signatures — Idempotency Key Requirements](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#replay-protection) for the full payload-matching contract.
+- **ETag / If-Match**: Businesses that support conditional writes return an `ETag` on checkout responses; platforms echo it via `If-Match` on Update, Complete, and Cancel. See [Concurrency Control](#concurrency-control).
 
 ## Protocol Mechanics
 
@@ -4650,11 +4677,85 @@ UCP uses standard HTTP status codes to indicate the success or failure of an API
 | `401 Unauthorized`          | Authentication is required and has failed or has not been provided.                |
 | `403 Forbidden`             | The request is authenticated but the user does not have the necessary permissions. |
 | `409 Conflict`              | The request could not be completed due to a conflict (e.g., idempotent key reuse). |
+| `412 Precondition Failed`   | The `If-Match` entity tag does not match the session's current state.              |
 | `422 Unprocessable Entity`  | The profile content is malformed (discovery failure).                              |
 | `424 Failed Dependency`     | The profile URL is valid but fetch failed (discovery failure).                     |
+| `428 Precondition Required` | The operation requires a conditional request (`If-Match`).                         |
 | `429 Too Many Requests`     | Rate limit exceeded.                                                               |
 | `503 Service Unavailable`   | Temporary unavailability.                                                          |
 | `500 Internal Server Error` | An unexpected condition was encountered on the server.                             |
+
+### Concurrency Control
+
+The REST binding carries the [Concurrency Control](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#concurrency-control) entity tag in standard HTTP conditional-request fields ([RFC 9110](https://www.rfc-editor.org/rfc/rfc9110#name-conditional-requests)):
+
+- Businesses that support conditional writes **SHOULD** return a strong `ETag` response header on every checkout response (Create, Get, Update, Complete, Cancel).
+- Platforms **SHOULD** send the last observed tag in an `If-Match` request header on Update, Complete, and Cancel.
+- On a tag mismatch the business **MUST NOT** apply any part of the write and **MUST** respond `412 Precondition Failed` with the standard error envelope and `code: "precondition_failed"`. The error is `recoverable`: the platform re-reads the session via Get Checkout, reconciles its intended changes with the current state, and retries with the fresh tag.
+- Businesses that require serialized writes **MAY** reject unconditional writes with `428 Precondition Required` ([RFC 6585](https://www.rfc-editor.org/rfc/rfc6585)). Platforms treat this like a mismatch: fetch the current state and its tag, then retry conditionally.
+
+`If-Match` composes with `Idempotency-Key`: idempotency deduplicates retries of one logical write, while the precondition orders distinct writes. A retried request keeps both its original `Idempotency-Key` and its original `If-Match` value.
+
+#### Example: Conditional Update
+
+```json
+PUT /checkout-sessions/chk_1234567890 HTTP/1.1
+UCP-Agent: profile="https://platform.example/profile"
+If-Match: "33a64df551425fcc"
+Content-Type: application/json
+
+{
+  "buyer": {
+    "email": "jane@example.com"
+  },
+  "line_items": [
+    {
+      "id": "li_1",
+      "item": {
+        "id": "item_123"
+      },
+      "quantity": 3
+    }
+  ]
+}
+```
+
+The write matched the session's current state; the response carries the new entity tag for the platform's next write.
+
+```json
+HTTP/1.1 200 OK
+Content-Type: application/json
+ETag: "5c3e9f10b74d21aa"
+
+{
+  "ucp": "...",
+  "id": "chk_1234567890",
+  "status": "ready_for_complete",
+  "currency": "USD",
+  "line_items": ["..."],
+  "links": ["..."],
+  "totals": ["..."]
+}
+```
+
+Another writer changed the session after this platform last read it. Nothing was applied; the platform re-reads and retries.
+
+```json
+HTTP/1.1 412 Precondition Failed
+Content-Type: application/json
+
+{
+  "ucp": { "version": "draft", "status": "error" },
+  "messages": [
+    {
+      "type": "error",
+      "code": "precondition_failed",
+      "severity": "recoverable",
+      "content": "Checkout changed since the supplied entity tag; re-read and retry."
+    }
+  ]
+}
+```
 
 ### Error Responses
 
@@ -4662,6 +4763,8 @@ See the [Core Specification](https://sakinaroufid.github.io/pr-test/draft/specif
 
 - **Protocol errors**: Return appropriate HTTP status code (401, 403, 409, 429, 503) with JSON body containing `code` and `content`.
 - **Business outcomes**: Return HTTP 200 with UCP envelope and `messages` array.
+
+The REST service definition (`rest.openapi.json`) declares these as `4XX`/`5XX` responses, plus an explicit `409` on state-changing operations for idempotency-key conflicts, each carrying the standard error envelope, so clients generated from the service definition receive a typed error shape.
 
 #### Business Outcomes
 
@@ -13667,6 +13770,8 @@ Performs a search against the business's product catalog. Supports free-text que
 | pagination | object        | Optional     | Pagination information in responses.                                  |
 | messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
 
+Like every other operation, `search_catalog` MAY return the standard error envelope (`ucp.status: "error"` with `messages`) in place of a search response payload when the request cannot be served. See [Error Handling](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling).
+
 ## Search Inputs
 
 A valid search request MUST include at least one of: a `query` string, one or more `filters`, or an extension-defined input. When `query` is omitted, the request represents a browse operation — the business returns products matching the provided filters without text-relevance ranking. Extensions MAY define additional inputs (e.g., visual similarity, product references).
@@ -13790,6 +13895,8 @@ Request body for catalog lookup.
 | ucp      | any            | **Required** | UCP metadata for catalog responses.                                                                                                                 |
 | products | Array[Product] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
 | messages | Array[object]  | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
+
+Like every other operation, `lookup_catalog` MAY return the standard error envelope (`ucp.status: "error"` with `messages`) in place of a lookup response payload when the request cannot be served. See [Error Handling](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling).
 
 ______________________________________________________________________
 
@@ -13940,12 +14047,7 @@ Maps to the [Catalog Search](https://sakinaroufid.github.io/pr-test/draft/specif
 
 **Output**
 
-| Name       | Type                                                                               | Requirement  | Description                                                           |
-| ---------- | ---------------------------------------------------------------------------------- | ------------ | --------------------------------------------------------------------- |
-| ucp        | any                                                                                | **Required** | UCP metadata for catalog responses.                                   |
-| products   | Array\[[Product](/pr-test/draft/specification/reference/#product)\]                | **Required** | Products matching the search criteria.                                |
-| pagination | [Pagination Response](/pr-test/draft/specification/reference/#pagination-response) | Optional     | Cursor-based pagination for list operations.                          |
-| messages   | Array\[[Message](/pr-test/draft/specification/reference/#message)\]                | Optional     | Errors, warnings, or informational messages about the search results. |
+This object MUST be one of the following types: [Catalog Search Search Response](/pr-test/draft/specification/catalog/rest/#catalog-search-search-response), [Error Response](/pr-test/draft/specification/reference/#error-response).
 
 #### Example
 
@@ -14079,11 +14181,7 @@ The request body contains an array of identifiers and optional context that appl
 
 **Output**
 
-| Name     | Type                                                                | Requirement  | Description                                                                                                                                         |
-| -------- | ------------------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp      | any                                                                 | **Required** | UCP metadata for catalog responses.                                                                                                                 |
-| products | Array\[[Product](/pr-test/draft/specification/reference/#product)\] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
-| messages | Array\[[Message](/pr-test/draft/specification/reference/#message)\] | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
+This object MUST be one of the following types: [Catalog Lookup Lookup Response](/pr-test/draft/specification/catalog/rest/#catalog-lookup-lookup-response), [Error Response](/pr-test/draft/specification/reference/#error-response).
 
 #### Example: Batch Lookup with Context
 
@@ -14422,6 +14520,8 @@ Use HTTP status codes for protocol-level issues that prevent request processing:
 | 429    | Too Many Requests - Rate limited                            |
 | 500    | Internal Server Error                                       |
 
+The REST service definition (`rest.openapi.json`) declares these as `4XX`/`5XX` responses carrying the standard error envelope, so clients generated from the service definition receive a typed error shape.
+
 ### Business Outcomes
 
 All application-level outcomes return HTTP 200 with the UCP envelope and optional `messages` array. See [Catalog Overview](https://sakinaroufid.github.io/pr-test/draft/specification/catalog/#messages-and-error-handling) for message semantics and common scenarios.
@@ -14481,6 +14581,23 @@ A product in a get_product response, extended with effective selections and avai
 | -------- | ------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | selected | Array[object] | Optional    | Effective option selections that anchor the featured variant and availability signals. Required when the product has configurable options; may be empty or omitted for products with no option axes. |
 | options  | Array[object] | Optional    | Product options with availability signals relative to the effective selections.                                                                                                                      |
+
+### Search Response
+
+| Name       | Type          | Requirement  | Description                                                           |
+| ---------- | ------------- | ------------ | --------------------------------------------------------------------- |
+| ucp        | any           | **Required** | UCP metadata for catalog responses.                                   |
+| products   | Array[object] | **Required** | Products matching the search criteria.                                |
+| pagination | object        | Optional     | Pagination information in responses.                                  |
+| messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
+
+### Lookup Response
+
+| Name     | Type           | Requirement  | Description                                                                                                                                         |
+| -------- | -------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp      | any            | **Required** | UCP metadata for catalog responses.                                                                                                                 |
+| products | Array[Product] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
+| messages | Array[object]  | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
 
 ### Get Product Response
 
@@ -14608,6 +14725,8 @@ Maps to the [Catalog Search](https://sakinaroufid.github.io/pr-test/draft/specif
 | products   | Array[object] | **Required** | Products matching the search criteria.                                |
 | pagination | object        | Optional     | Pagination information in responses.                                  |
 | messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
+
+When the request cannot be served, the tool returns a successful JSON-RPC result carrying the standard error envelope (`ucp.status: "error"` with `messages`) instead of a search response payload, mirroring [Product Not Found](#product-not-found) for `get_product`.
 
 #### Search Example
 
@@ -14769,6 +14888,8 @@ Request body for catalog lookup.
 | ucp      | any            | **Required** | UCP metadata for catalog responses.                                                                                                                 |
 | products | Array[Product] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
 | messages | Array[object]  | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
+
+When the request cannot be served, the tool returns a successful JSON-RPC result carrying the standard error envelope (`ucp.status: "error"` with `messages`) instead of a lookup response payload, mirroring [Product Not Found](#product-not-found) for `get_product`.
 
 #### Lookup Example
 

@@ -30,6 +30,8 @@ Performs a search against the business's product catalog. Supports free-text que
 | pagination | object        | Optional     | Pagination information in responses.                                  |
 | messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
 
+Like every other operation, `search_catalog` MAY return the standard error envelope (`ucp.status: "error"` with `messages`) in place of a search response payload when the request cannot be served. See [Error Handling](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling).
+
 ## Search Inputs
 
 A valid search request MUST include at least one of: a `query` string, one or more `filters`, or an extension-defined input. When `query` is omitted, the request represents a browse operation — the business returns products matching the provided filters without text-relevance ranking. Extensions MAY define additional inputs (e.g., visual similarity, product references).

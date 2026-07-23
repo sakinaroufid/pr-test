@@ -65,12 +65,7 @@ Maps to the [Catalog Search](https://sakinaroufid.github.io/pr-test/draft/specif
 
 **Output**
 
-| Name       | Type                                                                               | Requirement  | Description                                                           |
-| ---------- | ---------------------------------------------------------------------------------- | ------------ | --------------------------------------------------------------------- |
-| ucp        | any                                                                                | **Required** | UCP metadata for catalog responses.                                   |
-| products   | Array\[[Product](/pr-test/draft/specification/reference/#product)\]                | **Required** | Products matching the search criteria.                                |
-| pagination | [Pagination Response](/pr-test/draft/specification/reference/#pagination-response) | Optional     | Cursor-based pagination for list operations.                          |
-| messages   | Array\[[Message](/pr-test/draft/specification/reference/#message)\]                | Optional     | Errors, warnings, or informational messages about the search results. |
+This object MUST be one of the following types: [Catalog Search Search Response](/pr-test/draft/specification/catalog/rest/#catalog-search-search-response), [Error Response](/pr-test/draft/specification/reference/#error-response).
 
 #### Example
 
@@ -204,11 +199,7 @@ The request body contains an array of identifiers and optional context that appl
 
 **Output**
 
-| Name     | Type                                                                | Requirement  | Description                                                                                                                                         |
-| -------- | ------------------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ucp      | any                                                                 | **Required** | UCP metadata for catalog responses.                                                                                                                 |
-| products | Array\[[Product](/pr-test/draft/specification/reference/#product)\] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
-| messages | Array\[[Message](/pr-test/draft/specification/reference/#message)\] | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
+This object MUST be one of the following types: [Catalog Lookup Lookup Response](/pr-test/draft/specification/catalog/rest/#catalog-lookup-lookup-response), [Error Response](/pr-test/draft/specification/reference/#error-response).
 
 #### Example: Batch Lookup with Context
 
@@ -547,6 +538,8 @@ Use HTTP status codes for protocol-level issues that prevent request processing:
 | 429    | Too Many Requests - Rate limited                            |
 | 500    | Internal Server Error                                       |
 
+The REST service definition (`rest.openapi.json`) declares these as `4XX`/`5XX` responses carrying the standard error envelope, so clients generated from the service definition receive a typed error shape.
+
 ### Business Outcomes
 
 All application-level outcomes return HTTP 200 with the UCP envelope and optional `messages` array. See [Catalog Overview](https://sakinaroufid.github.io/pr-test/draft/specification/catalog/#messages-and-error-handling) for message semantics and common scenarios.
@@ -606,6 +599,23 @@ A product in a get_product response, extended with effective selections and avai
 | -------- | ------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | selected | Array[object] | Optional    | Effective option selections that anchor the featured variant and availability signals. Required when the product has configurable options; may be empty or omitted for products with no option axes. |
 | options  | Array[object] | Optional    | Product options with availability signals relative to the effective selections.                                                                                                                      |
+
+### Search Response
+
+| Name       | Type          | Requirement  | Description                                                           |
+| ---------- | ------------- | ------------ | --------------------------------------------------------------------- |
+| ucp        | any           | **Required** | UCP metadata for catalog responses.                                   |
+| products   | Array[object] | **Required** | Products matching the search criteria.                                |
+| pagination | object        | Optional     | Pagination information in responses.                                  |
+| messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
+
+### Lookup Response
+
+| Name     | Type           | Requirement  | Description                                                                                                                                         |
+| -------- | -------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ucp      | any            | **Required** | UCP metadata for catalog responses.                                                                                                                 |
+| products | Array[Product] | **Required** | Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products. |
+| messages | Array[object]  | Optional     | Errors, warnings, or informational messages about the requested items.                                                                              |
 
 ### Get Product Response
 

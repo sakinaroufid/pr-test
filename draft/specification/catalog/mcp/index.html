@@ -3050,6 +3050,10 @@ version compatibility checking and capability negotiation.</p>
 </tr>
 </tbody>
 </table>
+<p>When the request cannot be served, the tool returns a successful JSON-RPC
+result carrying the standard error envelope (<code>ucp.status: "error"</code> with
+<code>messages</code>) instead of a search response payload, mirroring
+<a href="#product-not-found">Product Not Found</a> for <code>get_product</code>.</p>
 <h4 id="search-example">Search Example<a class="headerlink" href="#search-example" title="Permanent link">&para;</a></h4>
 <div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="request" name="__tabbed_1" type="radio" /><input id="response" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="request">Request</label><label for="response">Response</label></div>
 <div class="tabbed-content">
@@ -3269,6 +3273,10 @@ for supported identifiers, resolution behavior, and client correlation requireme
 </tr>
 </tbody>
 </table>
+<p>When the request cannot be served, the tool returns a successful JSON-RPC
+result carrying the standard error envelope (<code>ucp.status: "error"</code> with
+<code>messages</code>) instead of a lookup response payload, mirroring
+<a href="#product-not-found">Product Not Found</a> for <code>get_product</code>.</p>
 <h4 id="lookup-example">Lookup Example<a class="headerlink" href="#lookup-example" title="Permanent link">&para;</a></h4>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="request_1" name="__tabbed_2" type="radio" /><input id="response_1" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="request_1">Request</label><label for="response_1">Response</label></div>
 <div class="tabbed-content">

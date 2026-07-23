@@ -1020,6 +1020,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#concurrency-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency Control
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3359,6 +3370,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#concurrency-control" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Concurrency Control
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4820,6 +4842,56 @@ that is not equal to <code>completed</code> or <code>canceled</code> <strong>SHO
 </table>
 <p><strong>Output</strong></p>
 <p>This object MUST be one of the following types: <a href="/pr-test/draft/specification/checkout/#checkout">Checkout</a>, <a href="/pr-test/draft/specification/reference/#error-response">Error Response</a>.</p>
+<h3 id="concurrency-control">Concurrency Control<a class="headerlink" href="#concurrency-control" title="Permanent link">&para;</a></h3>
+<p>Update Checkout is a full replacement, and a checkout session may
+legitimately have more than one writer: the spec explicitly contemplates an
+agent and a buyer in a trusted UI driving the same session (see
+<a href="#continue-url">Continue URL</a>). Without coordination, two writers that read
+the same state and then write divergent replacements silently lose one of
+the updates: last write wins, and neither party is told.</p>
+<p><code>Idempotency-Key</code> does not address this. Idempotency collapses <em>identical</em>
+retries of the same request; it neither detects nor serializes two
+<em>different</em> replacement writes racing for the same session.</p>
+<p>UCP therefore layers optimistic concurrency onto the state-changing
+checkout operations (Update, Complete, Cancel):</p>
+<ul>
+<li>The business assigns each checkout state an opaque <strong>entity tag</strong> that
+  changes whenever the stored session state changes, and returns it with
+  every checkout response.</li>
+<li>The platform echoes the last tag it observed when it writes. If the tag
+  still matches the session's current state, the write proceeds. If it does
+  not, the business rejects the write without applying it; the platform
+  re-reads the session (Get Checkout), reconciles its intended changes with
+  the current state, and retries with the new tag.</li>
+</ul>
+<p>Support is discovered from responses themselves: a business that returns
+entity tags is advertising conditional-write support, and a platform that
+has never seen a tag has nothing to echo and proceeds unconditionally. No
+profile configuration is involved.</p>
+<p>Bindings define the tag carrier. The
+<a href="../checkout-rest/#concurrency-control">REST binding</a> uses standard HTTP
+conditional requests (<code>ETag</code> / <code>If-Match</code>,
+<a href="https://www.rfc-editor.org/rfc/rfc9110#name-conditional-requests" target="_blank">RFC 9110</a>).
+Bindings without a native metadata carrier for response tags (MCP, A2A,
+Embedded) do not define one yet; writes on those bindings remain
+unconditional.</p>
+<p><strong>Business:</strong></p>
+<ul>
+<li><strong>SHOULD</strong> return an entity tag with every checkout response.</li>
+<li><strong>MUST</strong>, when returning entity tags, change the tag whenever the stored
+  session state changes, including business-initiated changes (repricing,
+  inventory adjustments), not only platform writes.</li>
+<li><strong>MUST</strong> reject a conditional write whose tag does not match the
+  session's current state, without applying any part of it.</li>
+</ul>
+<p><strong>Platform:</strong></p>
+<ul>
+<li><strong>SHOULD</strong> write conditionally whenever it has observed an entity tag
+  for the session.</li>
+<li><strong>SHOULD</strong>, on rejection, re-read the session, reapply its intended
+  changes on top of the current state, and retry with the fresh tag rather
+  than retrying the stale write verbatim.</li>
+</ul>
 <h2 id="transport-bindings">Transport Bindings<a class="headerlink" href="#transport-bindings" title="Permanent link">&para;</a></h2>
 <p>The abstract operations above are bound to specific transport protocols as
 defined below:</p>
