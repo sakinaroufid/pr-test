@@ -83,6 +83,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -160,6 +163,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -200,6 +206,9 @@
           },
           {
             "$ref": "#/components/parameters/idempotency_key"
+          },
+          {
+            "$ref": "#/components/parameters/if_match"
           },
           {
             "$ref": "#/components/parameters/request_id"
@@ -243,6 +252,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -252,6 +264,9 @@
                 }
               }
             }
+          },
+          "412": {
+            "$ref": "#/components/responses/precondition_failed"
           },
           "409": {
             "$ref": "#/components/responses/idempotency_conflict"
@@ -291,6 +306,9 @@
           },
           {
             "$ref": "#/components/parameters/idempotency_key"
+          },
+          {
+            "$ref": "#/components/parameters/if_match"
           },
           {
             "$ref": "#/components/parameters/request_id"
@@ -334,6 +352,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -341,6 +362,9 @@
                 "schema": { "$ref": "#/components/schemas/checkout_response" }
               }
             }
+          },
+          "412": {
+            "$ref": "#/components/responses/precondition_failed"
           },
           "409": {
             "$ref": "#/components/responses/idempotency_conflict"
@@ -382,6 +406,9 @@
             "$ref": "#/components/parameters/idempotency_key"
           },
           {
+            "$ref": "#/components/parameters/if_match"
+          },
+          {
             "$ref": "#/components/parameters/request_id"
           },
           {
@@ -415,6 +442,9 @@
               },
               "Content-Digest": {
                 "$ref": "#/components/headers/content_digest"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/etag"
               }
             },
             "content": {
@@ -424,6 +454,9 @@
                 }
               }
             }
+          },
+          "412": {
+            "$ref": "#/components/responses/precondition_failed"
           },
           "409": {
             "$ref": "#/components/responses/idempotency_conflict"
@@ -965,6 +998,15 @@
         },
         "description": "Ensures duplicate operations don't happen during retries."
       },
+      "if_match": {
+        "name": "If-Match",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Entity tag of the checkout state this write is based on (RFC 9110 conditional request). On mismatch the business rejects the write with 412 Precondition Failed. See Checkout REST - Concurrency Control."
+      },
       "request_id": {
         "name": "Request-Id",
         "in": "header",
@@ -1070,11 +1112,39 @@
           "type": "string"
         },
         "description": "JCS-canonicalized body digest per RFC 8785. Format: `sha-256=:<base64-digest>:`."
+      },
+      "etag": {
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Strong entity tag for the returned checkout state (RFC 9110). Echo via If-Match on Update, Complete, and Cancel to write conditionally. See Checkout REST - Concurrency Control."
       }
     },
     "responses": {
       "error": {
         "description": "Error. The body carries the standard UCP error envelope (`ucp.status: \"error\"` plus `messages`). See the transport specification's Status Codes section for which HTTP status codes apply to each failure class.",
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/signature"
+          },
+          "Signature-Input": {
+            "$ref": "#/components/headers/signature_input"
+          },
+          "Content-Digest": {
+            "$ref": "#/components/headers/content_digest"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../schemas/common/types/error_response.json"
+            }
+          }
+        }
+      },
+      "precondition_failed": {
+        "description": "Precondition failed. The If-Match entity tag does not match the session's current state; no part of the write is applied. The platform re-reads the session, reconciles, and retries with the fresh tag. See Checkout REST - Concurrency Control.",
         "headers": {
           "Signature": {
             "$ref": "#/components/headers/signature"
