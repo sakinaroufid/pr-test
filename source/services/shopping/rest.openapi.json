@@ -92,6 +92,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -160,6 +169,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       },
@@ -237,6 +252,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -317,6 +341,15 @@
                 "schema": { "$ref": "#/components/schemas/checkout_response" }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -391,6 +424,15 @@
                 }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -436,6 +478,15 @@
                 "schema": { "$ref": "#/components/schemas/cart_response" }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -474,6 +525,12 @@
                 "schema": { "$ref": "#/components/schemas/cart_response" }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       },
@@ -517,6 +574,15 @@
                 "schema": { "$ref": "#/components/schemas/cart_response" }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -557,6 +623,15 @@
                 "schema": { "$ref": "#/components/schemas/cart_response" }
               }
             }
+          },
+          "409": {
+            "$ref": "#/components/responses/idempotency_conflict"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -601,6 +676,12 @@
                 "schema": { "$ref": "#/components/schemas/catalog_search_response" }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -645,6 +726,12 @@
                 "schema": { "$ref": "#/components/schemas/catalog_lookup_response" }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -683,6 +770,12 @@
                 "schema": { "$ref": "#/components/schemas/order_response" }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -727,6 +820,12 @@
                 "schema": { "$ref": "#/components/schemas/catalog_get_product_response" }
               }
             }
+          },
+          "4XX": {
+            "$ref": "#/components/responses/error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/error"
           }
         }
       }
@@ -771,6 +870,12 @@
                 }
               }
             }
+          },
+          "4XX": {
+            "description": "Delivery rejected. Any non-2xx response is a failed delivery that the business retries."
+          },
+          "5XX": {
+            "description": "Delivery failed. Any non-2xx response is a failed delivery that the business retries."
           }
         }
       }
@@ -967,6 +1072,50 @@
         "description": "JCS-canonicalized body digest per RFC 8785. Format: `sha-256=:<base64-digest>:`."
       }
     },
+    "responses": {
+      "error": {
+        "description": "Error. The body carries the standard UCP error envelope (`ucp.status: \"error\"` plus `messages`). See the transport specification's Status Codes section for which HTTP status codes apply to each failure class.",
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/signature"
+          },
+          "Signature-Input": {
+            "$ref": "#/components/headers/signature_input"
+          },
+          "Content-Digest": {
+            "$ref": "#/components/headers/content_digest"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../schemas/common/types/error_response.json"
+            }
+          }
+        }
+      },
+      "idempotency_conflict": {
+        "description": "Idempotency-Key conflict. The key was reused with a request body that does not match the original request; the operation is not executed. See Message Signatures - Replay Protection.",
+        "headers": {
+          "Signature": {
+            "$ref": "#/components/headers/signature"
+          },
+          "Signature-Input": {
+            "$ref": "#/components/headers/signature_input"
+          },
+          "Content-Digest": {
+            "$ref": "#/components/headers/content_digest"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../schemas/common/types/error_response.json"
+            }
+          }
+        }
+      }
+    },
     "schemas": {
       "checkout": {
         "$ref": "../../schemas/shopping/checkout.json"
@@ -1005,13 +1154,19 @@
         "$ref": "../../schemas/shopping/catalog_search.json#/$defs/search_request"
       },
       "catalog_search_response": {
-        "$ref": "../../schemas/shopping/catalog_search.json#/$defs/search_response"
+        "oneOf": [
+          { "$ref": "../../schemas/shopping/catalog_search.json#/$defs/search_response" },
+          { "$ref": "../../schemas/common/types/error_response.json" }
+        ]
       },
       "catalog_lookup_request": {
         "$ref": "../../schemas/shopping/catalog_lookup.json#/$defs/lookup_request"
       },
       "catalog_lookup_response": {
-        "$ref": "../../schemas/shopping/catalog_lookup.json#/$defs/lookup_response"
+        "oneOf": [
+          { "$ref": "../../schemas/shopping/catalog_lookup.json#/$defs/lookup_response" },
+          { "$ref": "../../schemas/common/types/error_response.json" }
+        ]
       },
       "catalog_get_product_request": {
         "$ref": "../../schemas/shopping/catalog_lookup.json#/$defs/get_product_request"

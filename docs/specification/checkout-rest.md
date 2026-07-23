@@ -1326,6 +1326,11 @@ code registry and transport binding examples.
     503) with JSON body containing `code` and `content`.
 * **Business outcomes**: Return HTTP 200 with UCP envelope and `messages` array.
 
+The REST service definition (`rest.openapi.json`) declares these as `4XX`/`5XX`
+responses, plus an explicit `409` on state-changing operations for
+idempotency-key conflicts, each carrying the standard error envelope, so
+clients generated from the service definition receive a typed error shape.
+
 #### Business Outcomes
 
 Business outcomes (including errors like unavailable merchandise) are returned
