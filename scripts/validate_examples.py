@@ -461,11 +461,15 @@ def jsonpath_set(obj: dict, path: str, value):
   current = obj
   for seg in segments[:-1]:
     m = _SEGMENT_RE.match(seg)
+    if not m:
+      raise KeyError(seg)
     name, idx = m.group(1), m.group(2)
     current = current[name]
     if idx is not None:
       current = current[int(idx)]
   last = _SEGMENT_RE.match(segments[-1])
+  if not last:
+    raise KeyError(segments[-1])
   name, idx = last.group(1), last.group(2)
   if idx is not None:
     current[name][int(idx)] = value
@@ -479,6 +483,8 @@ def jsonpath_get_schema(schema: dict, path: str) -> dict:
   current = schema
   for seg in segments:
     m = _SEGMENT_RE.match(seg)
+    if not m:
+      raise KeyError(seg)
     name, idx = m.group(1), m.group(2)
     # Resolve through allOf to find properties
     current = _get_property_schema(current, name)
@@ -978,7 +984,20 @@ def process_block(
     validation_schema = resolved
 
   if target_path:
-    coverage_schema = jsonpath_get_schema(validation_schema, target_path)
+    try:
+      coverage_schema = jsonpath_get_schema(validation_schema, target_path)
+    except (
+      KeyError,
+      IndexError,
+      TypeError,
+    ) as e:
+      return Result(
+        file,
+        line,
+        "error",
+        f"target path navigation failed at {target_path}: {e}",
+        annotation,
+      )
   else:
     coverage_schema = validation_schema
 
