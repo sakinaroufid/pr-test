@@ -124,17 +124,22 @@ from pathlib import Path
 UCP_VERSION_PLACEHOLDER = "2026-04-08"
 
 ANNOTATION_RE = re.compile(r"^(\s*)<!--\s*ucp:example\s+(.*?)\s*-->")
-FENCE_OPEN_RE = re.compile(r"^(\s*)```json\s*$")
+# The info string may carry attributes (e.g. ```json {.yaml .no-copy}).
+FENCE_OPEN_RE = re.compile(r"^(\s*)```json(?:\s+\S.*)?\s*$")
 FENCE_CLOSE_RE = re.compile(r"^(\s*)```\s*$")
 # Any fenced code block (json or otherwise). Annotations inside such
 # blocks are documentation of the contract, not real annotations.
-FENCE_ANY_OPEN_RE = re.compile(r"^(\s*)```(\S*)\s*$")
+FENCE_ANY_OPEN_RE = re.compile(r"^(\s*)```(\S.*)?\s*$")
 
 # Recognized annotation attribute keys. Unknown keys are rejected at
 # parse time to catch typos like `shema=` or `directon=`.
 _KNOWN_ATTRS = frozenset(
   {"schema", "op", "direction", "extract", "target", "def"}
 )
+
+# Missing-required-property validation message, used to match errors
+# against elided fields acknowledged at the parent's child path.
+_REQUIRED_PROPERTY_MSG_RE = re.compile(r'"([^"]+)" is a required property')
 
 # -----------------------------------------------------------
 # Annotation parsing
@@ -408,10 +413,13 @@ def strip_ellipsis(obj, _path="", _paths=None):
     return result if _path else (result, _paths)
   elif isinstance(obj, list):
     items = []
-    for i, item in enumerate(obj):
+    for item in obj:
       if item == "...":
         continue
-      items.append(strip_ellipsis(item, f"{_path}/{i}", _paths))
+      # Record paths with the post-strip index: removed "..." items
+      # shift later elements, and validation errors are reported
+      # against the stripped payload.
+      items.append(strip_ellipsis(item, f"{_path}/{len(items)}", _paths))
     return items if _path else (items, _paths)
   return obj if _path else (obj, _paths)
 
@@ -1049,11 +1057,19 @@ def process_block(
   for ve in val_errors:
     # Suppress errors at ellipsis-acknowledged paths
     err_path = ve.get("path", "")
+    err_message = ve.get("message", "")
     if any(
       err_path == ep or err_path.startswith(ep + "/") for ep in ellipsis_paths
     ):
       continue
-    messages.append(f"validation: {err_path} \u2014 {ve.get('message', '')}")
+    # An elided required field ("field": "...") is stripped from the
+    # payload, so inside arrays (where the scaffold cannot heal it) the
+    # validator reports the missing property at the parent path. The
+    # elision acknowledged the field, so suppress that error too.
+    req_match = _REQUIRED_PROPERTY_MSG_RE.search(err_message)
+    if req_match and f"{err_path}/{req_match.group(1)}" in ellipsis_paths:
+      continue
+    messages.append(f"validation: {err_path} \u2014 {err_message}")
 
   if messages:
     return Result(

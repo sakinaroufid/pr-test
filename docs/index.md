@@ -320,6 +320,7 @@ image: assets/banner.png
               </div>
               <div class="code-block-placeholder">
 
+  <!-- ucp:example skip reason="homepage mockup snippet with prose ellipses; not a complete payload" -->
   ```json {.yaml .no-copy}
   {
     "ucp": { ... },
@@ -400,6 +401,7 @@ image: assets/banner.png
               </div>
               <div class="code-block-placeholder">
 
+  <!-- ucp:example skip reason="homepage mockup snippet; OAuth metadata sample with a prose caption, not a UCP payload" -->
   ```json {.yaml .no-copy}
   Sample of /.well-known/oauth-authorization-server
 
@@ -440,6 +442,7 @@ image: assets/banner.png
               </div>
               <div class="code-block-placeholder">
 
+  <!-- ucp:example skip reason="homepage mockup snippet with prose ellipses; not a complete payload" -->
   ```json {.yaml .no-copy}
   {
     "ucp": { ... },

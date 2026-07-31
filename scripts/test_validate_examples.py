@@ -208,6 +208,19 @@ def test_string_ellipsis_in_array() -> None:
     f"got {cleaned!r}",
   )
 
+  # Nested elisions after a removed "..." item must be recorded at the
+  # post-strip index \u2014 validation errors are reported against the
+  # stripped payload, where later elements have shifted down.
+  tree = {"totals": ["...", {"type": "total", "amount": "..."}]}
+  cleaned, paths = v.strip_ellipsis(tree)
+  _check(
+    "array_ellipsis_paths_use_post_strip_index",
+    cleaned == {"totals": [{"type": "total"}]}
+    and "/totals/0/amount" in paths
+    and "/totals/1/amount" not in paths,
+    f"got {cleaned!r}, paths {paths!r}",
+  )
+
 
 # -----------------------------------------------------------
 # Annotation parsing
@@ -353,6 +366,26 @@ def test_extract_blocks() -> None:
     f"got {blocks!r}",
   )
 
+  # A json fence with an attribute info string is still a json block,
+  # and must not corrupt fence tracking for what follows.
+  md = (
+    '<!-- ucp:example skip reason="x" -->\n'
+    "```json {.yaml .no-copy}\n"
+    "{}\n"
+    "```\n"
+    "\n"
+    '<!-- ucp:example skip reason="y" -->\n'
+    "```json\n{}\n```\n"
+  )
+  blocks = v.extract_blocks(_write_md(md))
+  _check(
+    "extract_json_fence_with_attrs",
+    len(blocks) == 2
+    and blocks[0]["annotation"].get("reason") == "x"
+    and blocks[1]["annotation"].get("reason") == "y",
+    f"got {blocks!r}",
+  )
+
 
 # -----------------------------------------------------------
 # process_block: integration tests requiring ucp-schema
@@ -489,6 +522,26 @@ def test_process_block_integration() -> None:
   _check(
     "process_unknown_annotation_attribute",
     result.status == "error" and "shema" in result.message,
+    f"got {result.status}: {result.message}",
+  )
+
+  # An elided required field inside an array item ("url": "...") is the
+  # documented "field present, value not asserted" form. The scaffold
+  # cannot heal array items, so the missing-property error surfaces at
+  # the parent path and must be suppressed via the elided child path.
+  md = (
+    "<!-- ucp:example schema=shopping/checkout op=read -->\n"
+    "```json\n"
+    '{ "ucp": { ... }, "id": "chk_1", "status": "ready_for_complete",\n'
+    '  "currency": "USD", "line_items": [ ... ], "totals": [ ... ],\n'
+    '  "links": [ { "type": "terms_of_use", "url": "..." } ],\n'
+    '  "payment": { ... }, "fulfillment": { ... } }\n'
+    "```\n"
+  )
+  result = _process(md)
+  _check(
+    "process_elided_required_field_in_array_item",
+    result.status == "ok",
     f"got {result.status}: {result.message}",
   )
 
