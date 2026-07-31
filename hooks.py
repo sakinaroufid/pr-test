@@ -285,12 +285,13 @@ def on_page_markdown(markdown, page, config, files):
     target_base = f"{base_path}latest/specification/"
 
     def replace_link(match):
-      path = match.group(1)
+      # Split off any #fragment first so suffix handling sees the file path.
+      path, sep, fragment = match.group(1).partition("#")
       if path.endswith("index.md"):
         path = path[:-8]
       elif path.endswith(".md"):
         path = path[:-3] + "/"
-      return f"({target_base}{path})"
+      return f"({target_base}{path}{sep}{fragment})"
 
     # Pattern matches: (  prefix  specification/  path  )
     # We capture the path AFTER specification/
@@ -346,12 +347,14 @@ def on_post_build(config):
     doc_folder = docs_dir / "documentation"
     if doc_folder.exists():
       for md_file in doc_folder.rglob("*.md"):
-        rel_path = md_file.relative_to(docs_dir).with_suffix(".html")
-        dest_file = site_dir / rel_path
+        # The root site publishes directory URLs (use_directory_urls), so
+        # both the stub location and its target must use the foo/ form.
+        rel_no_suffix = md_file.relative_to(docs_dir).with_suffix("")
+        dest_file = site_dir / rel_no_suffix / "index.html"
 
-        # Target URL: base_path + relative_path
-        # (e.g. /ucp/documentation/foo.html)
-        target = f"{base_path}{rel_path.as_posix()}"
+        # Target URL: base_path + directory URL on the root site
+        # (e.g. /documentation/foo/)
+        target = f"{base_path}{rel_no_suffix.as_posix()}/"
 
         dest_file.parent.mkdir(parents=True, exist_ok=True)
         with Path.open(dest_file, "w") as f:
