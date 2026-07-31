@@ -1513,8 +1513,11 @@ def define_env(env):
 
           # Add additional annotation for path parameters
           if param.get("in", "") == "path":
+            existing_desc = prop_schema.get("description", "")
             prop_schema["description"] = (
-              prop_schema.get("description", "") + "Defined in path."
+              f"{existing_desc} Defined in path."
+              if existing_desc
+              else "Defined in path."
             )
           param_props[name] = prop_schema
           if param.get("required"):
@@ -1628,10 +1631,13 @@ def define_env(env):
         if param.get("in") == "header":
           req_headers.append(param)
 
-      # 3. Extract Response Headers (Assumes 200 OK)
-      res_headers_defs = (
-        operation.get("responses", {}).get("200", {}).get("headers", {})
-      )
+      # 3. Extract Response Headers (from the success response: 200 or 201)
+      responses = operation.get("responses", {})
+      res_headers_defs = {}
+      for code in ["200", "201"]:
+        if code in responses:
+          res_headers_defs = responses[code].get("headers", {})
+          break
       res_headers = []
       for name, header in res_headers_defs.items():
         if "$ref" in header:
