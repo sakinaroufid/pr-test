@@ -5551,7 +5551,7 @@ line items, totals, and buyer information.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -5566,6 +5566,12 @@ line items, totals, and buyer information.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -5576,6 +5582,12 @@ line items, totals, and buyer information.</p>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;"><strong>Required</strong></td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>
@@ -5677,6 +5689,12 @@ confirmation details.</p>
 <td style="text-align: left;">Different totals for the order.</td>
 </tr>
 <tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Snapshot of the policies that applied to the items at checkout, captured on the order as a durable record. <code>applies_to</code> targets are relative to the response root.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -5726,7 +5744,7 @@ account, or wallet credential) available to the buyer.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>
@@ -5776,7 +5794,7 @@ account, or wallet credential) available to the buyer.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>
@@ -5831,7 +5849,7 @@ account, or wallet credential) available to the buyer.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>

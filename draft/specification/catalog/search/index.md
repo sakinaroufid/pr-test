@@ -23,12 +23,14 @@ Performs a search against the business's product catalog. Supports free-text que
 
 ### Response
 
-| Name       | Type          | Requirement  | Description                                                           |
-| ---------- | ------------- | ------------ | --------------------------------------------------------------------- |
-| ucp        | any           | **Required** | UCP metadata for catalog responses.                                   |
-| products   | Array[object] | **Required** | Products matching the search criteria.                                |
-| pagination | object        | Optional     | Pagination information in responses.                                  |
-| messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results. |
+| Name       | Type          | Requirement  | Description                                                                                                                                                                                            |
+| ---------- | ------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ucp        | any           | **Required** | UCP metadata for catalog responses.                                                                                                                                                                    |
+| products   | Array[object] | **Required** | Products matching the search criteria.                                                                                                                                                                 |
+| pagination | object        | Optional     | Pagination information in responses.                                                                                                                                                                   |
+| actions    | object        | Optional     | Outstanding extension-defined Actions for this catalog search response.                                                                                                                                |
+| messages   | Array[object] | Optional     | Errors, warnings, or informational messages about the search results.                                                                                                                                  |
+| policies   | Array[object] | Optional     | Policies (e.g., return/refund terms) that apply to the products in these search results. `applies_to` targets are relative to the response root; when absent or empty, refer to the URLs in `links[]`. |
 
 Like every other operation, `search_catalog` MAY return the standard error envelope (`ucp.status: "error"` with `messages`) in place of a search response payload when the request cannot be served. See [Error Handling](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#error-handling).
 
@@ -69,6 +71,10 @@ The `limit` parameter is a requested page size, not a guaranteed count. Implemen
 ### Pagination Response
 
 [Pagination Response](/pr-test/draft/specification/reference/#pagination-response)
+
+## Actions
+
+Search responses adopt the response-only `actions` map. The required `products` array can be empty; the Business decides whether it contains zero, some, or all otherwise relevant products under the Action-type contract. See [Catalog — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/catalog/#actions) for the parent contract and example, and [Overview — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#actions) for the common rules.
 
 ## Transport Bindings
 

@@ -2140,6 +2140,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#amount" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2716,6 +2727,17 @@
     <span class="md-ellipsis">
       
         Platform Fulfillment Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy
       
     </span>
   </a>
@@ -3821,6 +3843,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#amount" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4397,6 +4430,17 @@
     <span class="md-ellipsis">
       
         Platform Fulfillment Config
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Policy
       
     </span>
   </a>
@@ -5396,7 +5440,7 @@ within the UCP.</p>
 <tr>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
-<td style="text-align: left;"><strong>Required</strong>; omitted on create</td>
+<td style="text-align: left;"><strong>Required</strong>; omitted on create, transitioning from required to omitted on update</td>
 <td style="text-align: left;">Unique cart identifier.</td>
 </tr>
 <tr>
@@ -5442,6 +5486,12 @@ within the UCP.</p>
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional; omitted in requests</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional; omitted in requests</td>
@@ -5452,6 +5502,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;">Optional; omitted in requests</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional; omitted in requests</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>
@@ -5531,7 +5587,7 @@ within the UCP.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong>; omitted in requests</td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -5546,6 +5602,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional; omitted in requests</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional; omitted in requests</td>
@@ -5556,6 +5618,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;"><strong>Required</strong>; omitted in requests</td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional; omitted in requests</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>
@@ -5656,6 +5724,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different totals for the order.</td>
 </tr>
 <tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional; omitted in requests</td>
+<td style="text-align: left;">Snapshot of the policies that applied to the items at checkout, captured on the order as a durable record. <code>applies_to</code> targets are relative to the response root.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -5691,6 +5765,9 @@ within the UCP.</p>
 </table>
 <hr />
 <h2 id="type-schemas">Type Schemas<a class="headerlink" href="#type-schemas" title="Permanent link">&para;</a></h2>
+<h3 id="actions">Actions<a class="headerlink" href="#actions" title="Permanent link">&para;</a></h3>
+<p>Outstanding extension-defined Action instances, keyed by reverse-domain Action type, not extension name.</p>
+<hr />
 <h3 id="amount">Amount<a class="headerlink" href="#amount" title="Permanent link">&para;</a></h3>
 <p>Monetary amount in the currency's minor unit as defined by ISO 4217. Refer to the currency's exponent to determine minor-to-major ratio (e.g., 2 for USD, 0 for JPY, 3 for KWD).</p>
 <hr />
@@ -5920,7 +5997,7 @@ within the UCP.</p>
 <td style="text-align: left;">severity</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Reflects the resource state and recommended action. 'recoverable': platform can resolve by modifying inputs and retrying via API. 'requires_buyer_input': merchant requires information their API doesn't support collecting programmatically (checkout incomplete). 'requires_buyer_review': buyer must authorize before order placement due to policy, regulatory, or entitlement rules. 'unrecoverable': no valid resource exists to act on, retry with new resource or inputs. Errors with 'requires_<em>' severity contribute to 'status: requires_escalation'.<br></em><em>Enum:</em>* <code>recoverable</code>, <code>requires_buyer_input</code>, <code>requires_buyer_review</code>, <code>unrecoverable</code></td>
+<td style="text-align: left;">Reflects the resource state and recommended action. 'recoverable': platform can resolve the condition in band, for example by modifying inputs or processing a related Action, and submit a new operation when needed. 'requires_buyer_input': merchant requires information their API doesn't support collecting programmatically (checkout incomplete). 'requires_buyer_review': buyer must authorize before order placement due to policy, regulatory, or entitlement rules. 'unrecoverable': no valid resource exists to act on, retry with new resource or inputs. Errors with 'requires_<em>' severity contribute to 'status: requires_escalation'.<br></em><em>Enum:</em>* <code>recoverable</code>, <code>requires_buyer_input</code>, <code>requires_buyer_review</code>, <code>unrecoverable</code></td>
 </tr>
 </tbody>
 </table>
@@ -6468,7 +6545,7 @@ within the UCP.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>
@@ -7325,7 +7402,7 @@ within the UCP.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>
@@ -7376,6 +7453,44 @@ within the UCP.</p>
 <td style="text-align: left;">boolean</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Enables multiple groups per method.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="policy">Policy<a class="headerlink" href="#policy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Name</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Requirement</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">type</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#reverse-domain-name">Reverse Domain Name</a></td>
+<td style="text-align: left;"><strong>Required</strong></td>
+<td style="text-align: left;">Policy type discriminator. Open reverse-DNS vocabulary. Well-known values: <code>dev.ucp.shopping.policy.return</code> (return terms), <code>dev.ucp.shopping.policy.warranty</code> (warranty terms). Businesses MAY define custom types in their own domain (e.g., <code>com.example.policy.price_match</code>). Platforms MUST tolerate unknown values.</td>
+</tr>
+<tr>
+<td style="text-align: left;">description</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#description">Description</a></td>
+<td style="text-align: left;"><strong>Required</strong></td>
+<td style="text-align: left;">Human-readable policy summary in one or more formats (plain, markdown, html). Required on every policy so a platform can present it without understanding any type-specific fields. This is not the buyer-facing disclosure — display is compelled by a <code>messages[]</code> warning (see the Policies section).</td>
+</tr>
+<tr>
+<td style="text-align: left;">applies_to</td>
+<td style="text-align: left;">Array[string]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">RFC 9535 JSONPath expressions identifying the nodes this policy applies to, relative to the embedding response root (e.g., <code>$.line_items[0]</code> in cart/checkout, <code>$.products[2]</code> in catalog). Each target covers the node it names and everything nested under it, so a target on a product also covers its variants. A singular query (RFC 9535 Section 2.3.5.1; name and index selectors only) names a single node; filters, wildcards, and slices match a set. When omitted, the policy applies to the entire response. When policies of the same <code>type</code> contest a node, the narrowest target wins and overrides the rest. See the Policies section for how specificity resolves.</td>
+</tr>
+<tr>
+<td style="text-align: left;">url</td>
+<td style="text-align: left;">string</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Optional link to the full policy document.</td>
 </tr>
 </tbody>
 </table>
@@ -7989,7 +8104,7 @@ within the UCP.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>
@@ -8199,7 +8314,7 @@ within the UCP.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -8214,6 +8329,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -8224,6 +8345,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;"><strong>Required</strong></td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>
@@ -8457,6 +8584,12 @@ within the UCP.</p>
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -8467,6 +8600,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>
@@ -8546,7 +8685,7 @@ within the UCP.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -8561,6 +8700,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -8571,6 +8716,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;"><strong>Required</strong></td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>
@@ -8793,6 +8944,12 @@ within the UCP.</p>
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -8803,6 +8960,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>
@@ -8882,7 +9045,7 @@ within the UCP.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -8897,6 +9060,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -8907,6 +9076,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;"><strong>Required</strong></td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>
@@ -9839,10 +10014,22 @@ within the UCP.</p>
 <td style="text-align: left;">Pagination information in responses.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this catalog search response.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Errors, warnings, or informational messages about the search results.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the products in these search results. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">products</td>
@@ -9925,10 +10112,22 @@ within the UCP.</p>
 <td style="text-align: left;">Products matching the requested identifiers. May contain fewer items if some identifiers not found, or more if identifiers match multiple products.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this catalog lookup response.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Errors, warnings, or informational messages about the requested items.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the products in this response. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">products</td>
@@ -10023,10 +10222,22 @@ within the UCP.</p>
 <td style="text-align: left;">The requested product with full detail. Singular — this is a single-resource operation.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this product response.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Warnings or informational messages about the product (e.g., price recently changed, limited availability).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to this product. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">product</td>
@@ -10098,7 +10309,7 @@ within the UCP.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -10113,6 +10324,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -10123,6 +10340,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;"><strong>Required</strong></td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>
@@ -10208,7 +10431,7 @@ within the UCP.</p>
 <td style="text-align: left;">id</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">A unique identifier for this instrument instance, assigned by the platform.</td>
+<td style="text-align: left;">A unique identifier for this instrument instance. Typically assigned by the platform for instruments it collects. For a business-owned saved instrument returned on an identity-linked response, this identifier is assigned by the business; the platform MUST treat it as an opaque, business-scoped reference, and the business resolves it server-side when the buyer selects it.</td>
 </tr>
 <tr>
 <td style="text-align: left;">handler_id</td>
@@ -10306,7 +10529,7 @@ within the UCP.</p>
 <td style="text-align: left;">status</td>
 <td style="text-align: left;">string</td>
 <td style="text-align: left;"><strong>Required</strong></td>
-<td style="text-align: left;">Checkout state indicating the current phase and required action. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
+<td style="text-align: left;">Checkout state indicating the current phase and required processing. See Checkout Status lifecycle documentation for state transition details.<br><strong>Enum:</strong> <code>incomplete</code>, <code>requires_escalation</code>, <code>ready_for_complete</code>, <code>complete_in_progress</code>, <code>completed</code>, <code>canceled</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">currency</td>
@@ -10321,6 +10544,12 @@ within the UCP.</p>
 <td style="text-align: left;">Different cart totals.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;">object</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this checkout.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;">Optional</td>
@@ -10331,6 +10560,12 @@ within the UCP.</p>
 <td style="text-align: left;">Array[object]</td>
 <td style="text-align: left;"><strong>Required</strong></td>
 <td style="text-align: left;">Links to be displayed by the platform (Privacy Policy, TOS). Mandatory for legal compliance.</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[object]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this checkout. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">expires_at</td>

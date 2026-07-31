@@ -3107,10 +3107,19 @@ business profile.</p>
 </div>
 </div>
 <h3 id="update-checkout">Update Checkout<a class="headerlink" href="#update-checkout" title="Permanent link">&para;</a></h3>
+<p>Update Checkout is a full replacement operation. The Platform <strong>MUST</strong> send the
+entire Checkout resource, including any data updates to write-only fields; the
+supplied resource replaces the existing Checkout session state. The Platform
+<strong>MUST NOT</strong> start a new Update Checkout operation while the Checkout is
+<code>complete_in_progress</code>. Duplicate requests remain subject to
+<a href="../signatures/#replay-protection">Replay Protection</a>. If the Business receives a
+new Update Checkout request in that state, it <strong>MUST</strong> leave the Checkout
+unchanged and return the current Checkout with a recoverable error Message.</p>
 <h4 id="update-buyer-info">Update Buyer Info<a class="headerlink" href="#update-buyer-info" title="Permanent link">&para;</a></h4>
-<p>All fields in <code>buyer</code> are optional, allowing clients to progressively build
-the checkout state across multiple calls. Each PUT replaces the entire session,
-so clients must include all previously set fields they wish to retain.</p>
+<p>All fields in <code>buyer</code> are optional, allowing the Platform to progressively build
+the Checkout state across multiple calls. Outside <code>complete_in_progress</code>, each
+Update Checkout replaces the entire Checkout session, so the Platform <strong>MUST</strong>
+include all previously set fields it intends to retain.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="request_1" name="__tabbed_2" type="radio" /><input id="response_1" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="request_1">Request</label><label for="response_1">Response</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -3637,6 +3646,9 @@ type &amp; addresses.</p>
 <p>If businesses have specific logic to enforce field existence in <code>buyer</code> and
 addresses (i.e. <code>fulfillment_address</code>, <code>billing_address</code>), this is the right
 place to set these expectations via <code>messages</code>.</p>
+<p>The response is the Checkout object; the example below shows the synchronous
+<code>completed</code> case. See core <a href="../checkout/#complete-checkout">Complete Checkout</a>
+for status and <code>order</code> semantics.</p>
 <div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="request_4" name="__tabbed_5" type="radio" /><input id="response_4" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="request_4">Request</label><label for="response_4">Response</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
@@ -4515,7 +4527,7 @@ is present) per RFC 9421:</p>
 </span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="na">Idempotency-Key</span><span class="o">:</span> <span class="l">550e8400-e29b-41d4-a716-446655440000</span>
 </span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="na">Content-Digest</span><span class="o">:</span> <span class="l">sha-256=:X48E9q...:</span>
 </span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="na">Signature-Input</span><span class="o">:</span> <span class="l">sig1=(&quot;@method&quot; &quot;@authority&quot; &quot;@path&quot; &quot;idempotency-key&quot; &quot;content-digest&quot; &quot;content-type&quot;);keyid=&quot;platform-2025&quot;</span>
-</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="na">Signature</span><span class="o">:</span> <span class="l">sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:</span>
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="na">Signature</span><span class="o">:</span> <span class="l">sig1=:6G4i8TS6oUkGrx8KnCFUpsSPwd74...:</span>
 </span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
 </span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="p">{</span><span class="nt">&quot;line_items&quot;</span><span class="p">:[{</span><span class="nt">&quot;item&quot;</span><span class="p">:{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="s2">&quot;item_123&quot;</span><span class="p">},</span><span class="nt">&quot;quantity&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">}]}</span>
 </span></code></pre></div>
@@ -4534,8 +4546,8 @@ for the complete signing algorithm.</p>
 <div class="language-http highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kr">HTTP</span><span class="o">/</span><span class="m">1.1</span> <span class="m">200</span> <span class="ne">OK</span>
 </span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="na">Content-Type</span><span class="o">:</span> <span class="l">application/json</span>
 </span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="na">Content-Digest</span><span class="o">:</span> <span class="l">sha-256=:Y5fK8nLmPqRsT3vWxYzAbCdEfGhIjKlMnO...:</span>
-</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="na">Signature-Input</span><span class="o">:</span> <span class="l">sig1=(&quot;@status&quot; &quot;content-digest&quot; &quot;content-type&quot;);keyid=&quot;merchant-2025&quot;</span>
-</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="na">Signature</span><span class="o">:</span> <span class="l">sig1=:MFQCIH7kL9nM2oP5qR8sT1uV4wX6yZaB3cD...:</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="na">Signature-Input</span><span class="o">:</span> <span class="l">sig1=(&quot;@status&quot; &quot;content-digest&quot; &quot;content-type&quot;);keyid=&quot;merchant-2026&quot;</span>
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="na">Signature</span><span class="o">:</span> <span class="l">sig1=:6G4i8TS6oUkGrx8KnCFUpsSPwd74...:</span>
 </span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>
 </span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="p">{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="s2">&quot;chk_123&quot;</span><span class="p">,</span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;completed&quot;</span><span class="p">,</span><span class="nt">&quot;order&quot;</span><span class="p">:{</span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="s2">&quot;ord_456&quot;</span><span class="p">}}</span>
 </span></code></pre></div>

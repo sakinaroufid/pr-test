@@ -196,7 +196,7 @@ Discounts from accepted but unverified claims carry `provisional: true`. Provisi
 
 ### Example: Provisional Discount with Attribution
 
-Building on the store card example from [Eligibility Verification at Completion](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#eligibility-verification-at-completion), the discount extension provides structured attribution. The Platform claims a store card benefit; the Business surfaces the provisional discount with full stacking and allocation details:
+Using the same claim-resolution pattern described in [Eligibility Verification at Completion](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#eligibility-verification-at-completion), the discount extension provides structured attribution. The Platform claims a store card benefit; the Business surfaces the provisional discount with full stacking and allocation details:
 
 ```json
 {
@@ -339,7 +339,7 @@ A flat discount applied to the order total. No allocations—the discount applie
 
 ```json
 {
-  "id": "...",
+  "id": "...",  // deprecated: id is provided in URL path
   "line_items": [ ... ],
   "discounts": {
     "codes": ["SAVE10"]
@@ -377,7 +377,7 @@ This example shows both discount types: a per-item discount (20% off) allocated 
 
 ```json
 {
-  "id": "...",
+  "id": "...",  // deprecated: id is provided in URL path
   "line_items": [ ... ],
   "discounts": {
     "codes": ["SUMMER20"]
@@ -440,7 +440,7 @@ When a discount code cannot be applied, the rejection is communicated via the `m
 
 ```json
 {
-  "id": "...",
+  "id": "...",  // deprecated: id is provided in URL path
   "line_items": [ ... ],
   "discounts": {
     "codes": ["SAVE10", "EXPIRED50"]

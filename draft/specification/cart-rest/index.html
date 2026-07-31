@@ -3135,6 +3135,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -3145,6 +3151,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>
@@ -3325,6 +3337,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -3335,6 +3353,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>
@@ -3549,6 +3573,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -3559,6 +3589,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>
@@ -3584,7 +3620,7 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="err">Co</span><span class="kc">ntent</span><span class="mi">-</span><span class="err">Type</span><span class="p">:</span><span class="w"> </span><span class="err">applica</span><span class="kc">t</span><span class="err">io</span><span class="kc">n</span><span class="err">/jso</span><span class="kc">n</span>
 </span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
 </span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">{</span>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cart_abc123&quot;</span><span class="p">,</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">  </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cart_abc123&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1">// deprecated: id is provided in URL path</span>
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span><span class="nt">&quot;line_items&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">    </span><span class="p">{</span>
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">      </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
@@ -3740,6 +3776,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Estimated cost breakdown. May be partial if shipping/tax not yet calculable.</td>
 </tr>
 <tr>
+<td style="text-align: left;">actions</td>
+<td style="text-align: left;"><a href="/pr-test/draft/specification/reference/#actions">Actions</a></td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Outstanding extension-defined Actions for this cart.</td>
+</tr>
+<tr>
 <td style="text-align: left;">messages</td>
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#message">Message</a>]</td>
 <td style="text-align: left;">Optional</td>
@@ -3750,6 +3792,12 @@ cart capability is defined in the <code>rest.endpoint</code> field of the busine
 <td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#link">Link</a>]</td>
 <td style="text-align: left;">Optional</td>
 <td style="text-align: left;">Optional merchant links (policies, FAQs).</td>
+</tr>
+<tr>
+<td style="text-align: left;">policies</td>
+<td style="text-align: left;">Array[<a href="/pr-test/draft/specification/reference/#policy">Policy</a>]</td>
+<td style="text-align: left;">Optional</td>
+<td style="text-align: left;">Policies (e.g., return/refund terms) that apply to the items in this cart. <code>applies_to</code> targets are relative to the response root; when absent or empty, refer to the URLs in <code>links[]</code>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">continue_url</td>

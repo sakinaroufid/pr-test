@@ -164,6 +164,53 @@ See [Media](/pr-test/draft/specification/reference/#media) in the [Schema Refere
 | scale_max | number  | **Required** | Maximum value on the rating scale (e.g., 5 for 5-star).    |
 | count     | integer | Optional     | Number of reviews contributing to the rating.              |
 
+### Policy
+
+Policies (return/refund terms, warranty, and the like) that apply to the products in a catalog response. JSONPath targets in `applies_to` are relative to the response root — `$.products[N]` for search and batch lookup, `$.product` for get_product. See [Policies](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#policies) for the full model.
+
+| Name        | Type                                                                               | Requirement  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| type        | [Reverse Domain Name](/pr-test/draft/specification/reference/#reverse-domain-name) | **Required** | Policy type discriminator. Open reverse-DNS vocabulary. Well-known values: `dev.ucp.shopping.policy.return` (return terms), `dev.ucp.shopping.policy.warranty` (warranty terms). Businesses MAY define custom types in their own domain (e.g., `com.example.policy.price_match`). Platforms MUST tolerate unknown values.                                                                                                                                                                                                                                                                                                                                                          |
+| description | [Description](/pr-test/draft/specification/reference/#description)                 | **Required** | Human-readable policy summary in one or more formats (plain, markdown, html). Required on every policy so a platform can present it without understanding any type-specific fields. This is not the buyer-facing disclosure — display is compelled by a `messages[]` warning (see the Policies section).                                                                                                                                                                                                                                                                                                                                                                           |
+| applies_to  | Array[string]                                                                      | Optional     | RFC 9535 JSONPath expressions identifying the nodes this policy applies to, relative to the embedding response root (e.g., `$.line_items[0]` in cart/checkout, `$.products[2]` in catalog). Each target covers the node it names and everything nested under it, so a target on a product also covers its variants. A singular query (RFC 9535 Section 2.3.5.1; name and index selectors only) names a single node; filters, wildcards, and slices match a set. When omitted, the policy applies to the entire response. When policies of the same `type` contest a node, the narrowest target wins and overrides the rest. See the Policies section for how specificity resolves. |
+| url         | string                                                                             | Optional     | Optional link to the full policy document.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+
+## Actions
+
+Catalog Search, batch Lookup, and successful Get Product responses can include extension-defined Actions. In Catalog, an Action is outstanding work that gates the effect its type defines, which may affect which products the Business returns or how the Platform handles them.
+
+Search, batch Lookup, and successful Get Product are independent Catalog operations; their responses do not share a containing-resource lifetime. The Business **MAY** use the same Action `id` in separate responses; that equality does not identify the same work. A concrete Action-type contract **MAY** define stronger correlation for its instances.
+
+For Search and batch Lookup, the Business decides whether to return zero, some, or all otherwise relevant products under the Action-type contract and its own policy. A Message can point to the Action to explain the response. Successful Get Product still includes `product`; its existing error response is unchanged.
+
+After processing an Action, the Platform performs a fresh Catalog operation and the later Business response is authoritative. Catalog defines no Action lifecycle, polling, or resume behavior; a concrete Action-type contract **MAY** define those behaviors for processing its instances. The common shape and rules are defined in [Overview — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#actions).
+
+For example, this Search response returns no products and explains that age verification may affect the results:
+
+```json
+{
+  "ucp": {...},
+  "products": [],
+  "actions": {
+    "com.example.identity.age_verification": [
+      {
+        "id": "age-check-1"
+      }
+    ]
+  },
+  "messages": [
+    {
+      "type": "info",
+      "code": "age_verification_required",
+      "content": "Complete age verification to see age-restricted products matching your search.",
+      "path": "$.actions['com.example.identity.age_verification'][0]"
+    }
+  ]
+}
+```
+
+Returning zero products is one Business choice; returning a subset or the full result set is also conformant. The Action type and Message code are illustrative; Catalog defines neither.
+
 ## Messages and Error Handling
 
 All catalog responses include an optional `messages` array that allows businesses to provide context about errors, warnings, or informational notices.

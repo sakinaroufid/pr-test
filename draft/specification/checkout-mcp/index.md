@@ -350,6 +350,8 @@ Maps to the [Get Checkout](https://sakinaroufid.github.io/pr-test/draft/specific
 
 Maps to the [Update Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#update-checkout) operation.
 
+The Platform **MUST NOT** start a new `update_checkout` operation while the Checkout is `complete_in_progress`. Duplicate requests remain subject to [Replay Protection](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#replay-protection). If the Business receives a new `update_checkout` request in that state, it **MUST** leave the Checkout unchanged and return the current Checkout with a recoverable error Message.
+
 #### Input Schema
 
 - `id` (String): **Required**. The ID of the checkout session to update.
@@ -564,7 +566,7 @@ Maps to the [Complete Checkout](https://sakinaroufid.github.io/pr-test/draft/spe
 
 #### Output Schema
 
-- [Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#complete-checkout) object, containing a partial `order` that holds only `id` and `permalink_url`.
+- [Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#complete-checkout) object. See core [Complete Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#complete-checkout) for status and `order` semantics.
 
 ### `cancel_checkout`
 
@@ -694,7 +696,7 @@ UCP-Agent: profile="https://platform.example/.well-known/ucp"
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 Content-Digest: sha-256=:RK/0qy18MlBSVnWgjwz6lZEWjP/lF5HF9bvEF8FabDg=:
 Signature-Input: sig1=("@method" "@authority" "@path" "content-digest" "content-type" "ucp-agent" "idempotency-key");keyid="platform-2026"
-Signature: sig1=:MEUCIQDXyK9N3p5Rt...:
+Signature: sig1=:6G4i8TS6oUkGrx8KnCFUpsSPwd74...:
 
 {"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"complete_checkout","arguments":{"id":"checkout_abc123","checkout":{"payment":{...}}}}}
 ```
@@ -720,7 +722,7 @@ HTTP/1.1 200 OK
 Content-Type: application/json
 Content-Digest: sha-256=:Y5fK8nLmPqRsT3vWxYzAbCdEfGhIjKlMnO...:
 Signature-Input: sig1=("@status" "content-digest" "content-type");keyid="merchant-2026"
-Signature: sig1=:MFQCIH7kL9nM2oP5qR8sT1uV4wX6yZaB3cD...:
+Signature: sig1=:6G4i8TS6oUkGrx8KnCFUpsSPwd74...:
 
 {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"..."}],"structuredContent":{"id":"checkout_abc123","status":"completed"}}}
 ```
