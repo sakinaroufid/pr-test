@@ -170,8 +170,11 @@ jobs:
           git clone --branch gh-pages "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages-branch
           cd gh-pages-branch
 
-          # Remove existing root files except versions and git metadata
-          git ls-files | grep -vE "^(\.nojekyll|draft|latest|[0-9]{4}-[0-9]{2}-[0-9]{2}|versions\.json|\.git)" | xargs -r rm -f
+          # Remove existing root files except versions and git metadata.
+          # NUL-delimited end to end: asset filenames contain spaces
+          # (e.g. partner logos), which whitespace-splitting xargs would
+          # break into garbage tokens that rm -f ignores silently.
+          git ls-files -z | grep -zvE "^(\.nojekyll|draft|latest|[0-9]{4}-[0-9]{2}-[0-9]{2}|versions\.json|\.git)" | xargs -0 -r rm -f
           find . -maxdepth 1 -type d -empty -not -path "./.git*" -delete
 
           # Copy build artifacts to root
