@@ -107,7 +107,7 @@ method.
 
 ### Example
 
-<!-- ucp:example schema=shopping/checkout op=read -->
+<!-- ucp:example schema=shopping/fulfillment def=dev.ucp.shopping.checkout op=read -->
 ```json
 {
   "ucp": { ... },
@@ -243,7 +243,7 @@ method, and when. Use cases:
 * **Alternative methods**: "These pants are also available for pickup at Downtown Store"
 * **Fulfill later**: Preorders, items shipping from a distant warehouse, pickup when store gets inventory
 
-<!-- ucp:example schema=shopping/checkout op=read -->
+<!-- ucp:example schema=shopping/fulfillment def=dev.ucp.shopping.checkout op=read -->
 ```json
 {
   "ucp": { ... },
@@ -633,7 +633,7 @@ so a cart can mix shipped and installed items (see
 
 **Config:** None required (default behavior)
 
-<!-- ucp:example schema=shopping/checkout op=read -->
+<!-- ucp:example schema=shopping/fulfillment def=dev.ucp.shopping.checkout op=read -->
 ```json
 {
   "ucp": { ... },
@@ -704,7 +704,7 @@ so a cart can mix shipped and installed items (see
 Business splits items into multiple packages; buyer selects shipping rate per
 package.
 
-<!-- ucp:example schema=shopping/checkout op=read -->
+<!-- ucp:example schema=shopping/fulfillment def=dev.ucp.shopping.checkout op=read -->
 ```json
 {
   "ucp": { ... },
@@ -780,7 +780,7 @@ package.
 Shirt ships to mom (US), pants ship to grandma (Hong Kong). Two methods of the
 same type, each with its own destination.
 
-<!-- ucp:example schema=shopping/checkout op=read -->
+<!-- ucp:example schema=shopping/fulfillment def=dev.ucp.shopping.checkout op=read -->
 ```json
 {
   "ucp": { ... },
