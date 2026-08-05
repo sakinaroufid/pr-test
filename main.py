@@ -1628,10 +1628,14 @@ def define_env(env):
         if param.get("in") == "header":
           req_headers.append(param)
 
-      # 3. Extract Response Headers (Assumes 200 OK)
-      res_headers_defs = (
-        operation.get("responses", {}).get("200", {}).get("headers", {})
-      )
+      # 3. Extract Response Headers (first success response)
+      success_response_codes = ["200", "201"]
+      res_headers_defs = {}
+      res = operation.get("responses", {})
+      for code in success_response_codes:
+        if code in res:
+          res_headers_defs = res.get(code, {}).get("headers", {})
+          break
       res_headers = []
       for name, header in res_headers_defs.items():
         if "$ref" in header:
