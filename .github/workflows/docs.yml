@@ -28,6 +28,8 @@ on:
       - "release/**"
     paths:
       - ".github/workflows/docs.yml"
+      - ".github/actions/**"
+      - ".github/linters/.yamllint.yml"
       - "pyproject.toml"
       - "uv.lock"
       - "mkdocs.yml"
