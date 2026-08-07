@@ -151,6 +151,7 @@ webbotauth
 worktree
 yaml
 yml
+EDITMSG
 jwks
 keyid
 reauth
