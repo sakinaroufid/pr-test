@@ -3,7 +3,7 @@
   "info": {
     "title": "UCP Shopping Service",
     "description": "Canonical MCP/JSON-RPC interface for UCP Shopping service. Schema references are logical pointers - actual payload shape is determined by negotiated capabilities.\n\n**Endpoint Resolution:** This spec defines methods only. The endpoint URL MUST be obtained from the merchant's discovery profile at `/.well-known/ucp` under `services[\"dev.ucp.shopping\"][transport=mcp].endpoint`. The server entry below is a placeholder for tooling compatibility.",
-    "version": "2026-08-05"
+    "version": "2026-08-25"
   },
   "servers": [
     {
@@ -54,26 +54,6 @@
         "oneOf": [
           {
             "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/get_product_response"
-          },
-          {
-            "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
-          }
-        ]
-      },
-      "catalog_search_result": {
-        "oneOf": [
-          {
-            "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_response"
-          },
-          {
-            "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
-          }
-        ]
-      },
-      "catalog_lookup_result": {
-        "oneOf": [
-          {
-            "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_response"
           },
           {
             "$ref": "https://ucp.dev/draft/schemas/common/types/error_response.json"
@@ -423,7 +403,7 @@
       "result": {
         "name": "response",
         "schema": {
-          "$ref": "#/components/schemas/catalog_search_result"
+          "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_search.json#/$defs/search_response"
         }
       }
     },
@@ -450,7 +430,7 @@
       "result": {
         "name": "response",
         "schema": {
-          "$ref": "#/components/schemas/catalog_lookup_result"
+          "$ref": "https://ucp.dev/draft/schemas/shopping/catalog_lookup.json#/$defs/lookup_response"
         }
       }
     },

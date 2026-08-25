@@ -9,11 +9,359 @@ Schema notes:
 - Date format: Always specified as [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html) unless otherwise specified
 - Amounts format: Minor units (cents)
 
+## Quantities and units
+
+UCP uses a shared quantity representation wherever a schema contains an integer `quantity`, a `quantity_unit`, or the shared measure type.
+
+A `quantity` is an integer count of **steps**. A unit descriptor consists of:
+
+- `unit` — a required, stable machine identifier.
+- `scale` — an optional nonnegative integer, at most 15 (a bound derived from the integer range; see below). Its effective value is the provided value or `0` when omitted.
+- `display_text` — a required printable label for the unit.
+
+One step is `10^-scale` of `unit`. The shared measure type adds a required integer `value`, which is also a count of those steps. Because these counts are integers, `scale` fixes the representation's granularity. A unit descriptor's machine identity is the (`unit`, effective `scale`) pair; `display_text` is not part of that identity. This identity applies only to the unit descriptor; it does not identify the purchasable item or exhaustively describe one sale unit.
+
+The default sale basis is `each`, with machine identity (`C62`, `0`). `C62` is the United Nations Centre for Trade Facilitation and Electronic Business (UN/CEFACT) Recommendation 20 (Rec20) Common Code for one/each. The Business **MAY** omit `quantity_unit` from an authoritative Business representation to encode this default. When a Business or Platform includes a descriptor whose `unit` is `C62`, it **MUST** use an effective `scale` of `0`; `scale` can only be omitted or explicitly set to `0`.
+
+UCP does not put floating-point numbers on the wire. Quantity arithmetic feeds money — `price × quantity × 10^-scale` prices a line, `fulfilled` accumulates across fulfillment events, and status derives from `fulfilled == total` — so quantities get money's representation: an integer count plus a declared interpretation, exactly as an `amount` relates to its `currency`. Integer counts keep every total and comparison exact in every language, and UCP therefore defines no rounding tolerances and no epsilon comparisons anywhere in the quantity lifecycle. A fulfilled quantity that legitimately differs from the ordered quantity — a 1.90 lb pick against a 2.00 lb order — is a commercial fact reconciled through [adjustments](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/order/#adjustments) that move money together with quantity, not a numeric error absorbed by comparison fuzz.
+
+Reading a quantity requires no arithmetic and no unit knowledge: shift the decimal point `scale` places and append `display_text`. `150` with `{ "scale": 2, "display_text": "kg" }` renders as `1.50 kg`, by the same code path for a Rec20 code and for a custom unit. Unlike a currency exponent, `scale` is per-item data rather than a static table — which is why authoritative responses always carry their own descriptor on every non-`each` line.
+
+### Integer range and ingestion
+
+Every integer-valued field in UCP — amounts, quantity step counts, measure values — is a JSON integer; each field's schema declares its sign and bounds, and all are capped at ±(2^53 − 1) (±9,007,199,254,740,991) — the range within which every JSON implementation agrees exactly on integer values ([RFC 8259](https://www.rfc-editor.org/rfc/rfc8259.html), Section 6) and within which [JCS](https://www.rfc-editor.org/rfc/rfc8785.html) canonicalization, required for [AP2 mandate signing](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/#canonicalization), is defined. The same cap derives `scale`'s maximum of 15: at scale 16, one whole unit (10^16 steps) would be unrepresentable. An out-of-range value is schema-invalid and is rejected like any other invalid payload.
+
+Arithmetic over these values **MUST** be exact. Within the wire range, IEEE 754 binary64 — a JavaScript `Number` from `JSON.parse` — holds every integer exactly; products such as `amount × quantity` can exceed 64 bits, so use wider or arbitrary-precision integers, or overflow checks. An implementation that cannot produce an exact, in-range result **MUST** surface an error rather than emit, display, or act on an approximate or wrapped value.
+
+When UCP data crosses into external systems, implementations **SHOULD** convert once at ingestion — apply the declared scale (or currency exponent) into an exact decimal type (SQL `NUMERIC`, Java `BigDecimal`, Python `Decimal`), or carry the (value, scale) pair unchanged — and **SHOULD NOT** perform scale application or value-bearing arithmetic in binary floating point.
+
+### Unit vocabulary
+
+The Business **SHOULD** use the exact Rec20 Common Code unless no code accurately identifies the unit. When no Rec20 code accurately identifies the unit, the Business **MAY** use a custom unit identifier. If it does, the Business **MUST** use that identifier consistently for the same unit. The Platform **MUST** treat an unrecognized `unit` value as opaque. The following table is non-exhaustive:
+
+| Code  | Unit         |
+| ----- | ------------ |
+| `C62` | one / `each` |
+| `KGM` | kilogram     |
+| `GRM` | gram         |
+| `LBR` | pound        |
+| `MLT` | millilitre   |
+| `LTR` | litre        |
+| `MTR` | metre        |
+| `INH` | inch         |
+| `YRD` | yard         |
+| `FTK` | square foot  |
+| `MTK` | square metre |
+| `HUR` | hour         |
+| `MIN` | minute       |
+
+Rec20 includes X-prefixed package units derived from UN/CEFACT Recommendation 21 (Rec21). UCP deliberately excludes those values from `quantity_unit`. The Business **MUST** make package form part of the purchasable variant's identity and count packages as `each`. The Business **MUST NOT** use an X-prefixed Rec21-derived package code as `quantity_unit`.
+
+### Display text
+
+When sending a unit descriptor, a Business or Platform **MUST** include `display_text`. The Platform **MUST** use that value when it does not recognize `unit`. For a recognized Rec20 code, the Platform **MAY** substitute its own localized label. The Business and Platform **MUST NOT** use `display_text` when matching machine identities or as an input to quantity conversion.
+
+### Ordering increment
+
+A sale-basis descriptor (`quantity_unit`) **MAY** declare an `increment`: an optional positive integer, denominated in steps, whose effective value is the provided value or `1` when omitted. Only the sale basis carries an increment; the bare unit descriptor and the shared measure type do not. It declares the ordering granularity the Business sells in — for example, an item sold by the pound with `scale` `2` and `increment` `25` is sold in 0.25 lb multiples.
+
+`scale` and `increment` play different roles: `scale` bounds what any quantity can express; `increment` shapes what the Platform asks for. The increment is advisory merchandising policy, not a representational bound — Platform-authored quantities **SHOULD** be integer multiples of the line's effective increment, while Business-authored quantities (checkout revisions, fulfillment events, adjustments) are bounded only by `scale`. `increment` is not part of the unit-descriptor machine identity and **MUST NOT** participate in mismatch comparison.
+
+Request assertions, mismatch handling, response echo, off-increment request handling, pricing, and lifecycle behavior are defined by the capability that uses the shared representation.
+
+## Request Constraints
+
+After capabilities and extensions are negotiated, the resolved UCP request schema defines the fields and structure allowed for an operation. In an authoritative response, a Business can use `ucp.request_constraints` to signal additional rules it will apply when evaluating request data in the next Platform request. For example, it can constrain a Line Item quantity to exactly `100` sale-basis steps or require a submitted payment instrument to include `billing_address`. A Platform can evaluate these constraints before submission, avoiding a round trip for request data the Business has already indicated it will reject.
+
+`ucp.request_constraints` is used only in authoritative operation responses and has no effect in discovery profiles or operation requests.
+
+### Validation model
+
+A submitted request is valid under Request Constraints only if it satisfies the resolved request schema and every object selected by Request Constraints satisfies the corresponding Constraint Expression. Request Constraints only narrow the resolved request schema; they cannot make a request valid when that schema rejects it. A Business evaluates the request as follows:
+
+```text
+valid = validate(resolved_request_schema, request)
+
+for each constraint:
+  objects = select(request, effective_path(constraint))
+  valid = valid AND validate_all(
+    constraint_expression(constraint),
+    objects
+  )
+
+return valid
+```
+
+A Platform **MAY** perform the same checks as preflight. For each chosen value, the Platform **MUST** use its effective path and complete Constraint Expression. The Platform **MAY** submit the request regardless of the preflight result; Business evaluation is authoritative.
+
+### Constraint Expression
+
+A `request_constraints` value and every nested constraint object use embedded JSON Schema Draft 2020-12 language. The outer value may additionally contain an optional `path`; nested constraint objects may not. The grammar does not admit `ucp`. Keys in `properties` name fields on selected request objects.
+
+The constraint begins at an Object Constraint. Object Constraints may nest through `properties` and `anyOf`; Value Constraints occur only as values in an Object Constraint's `properties` map.
+
+| Position          | Admitted members                  | Shape and behavior                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Object Constraint | `required`, `properties`, `anyOf` | `required` is an array of unique field names. `properties` maps field names to Object or Value Constraints. `anyOf` is a non-empty array of non-empty Object Constraints, at least one of which the object must satisfy. An empty Object Constraint is a valid no-op at every Object Constraint position except an `anyOf` branch. |
+| Value Constraint  | `enum`, `const`                   | `enum` is a non-empty array of unique JSON values. `const` is any JSON value. At least one member is present; when both are present, both apply.                                                                                                                                                                                   |
+
+No other member is admitted at either grammar position.
+
+Members present at the same Object Constraint all apply. `anyOf` does not narrow, override, or replace its siblings; the object must satisfy every sibling member and at least one branch. Each branch is an ordinary Object Constraint and cannot carry `path`, so every branch is evaluated against the same selected object.
+
+Branches are alternatives, not a partition: an object satisfying more than one branch is valid. Within a branch, `properties` constrains a member only when that member is present, so a branch pinning a discriminator through `properties` alone is also satisfied by an object that omits it; naming the discriminator in the branch's `required` makes the branch match only the shape it describes.
+
+The grammar is defined independently of the object it is bound to. Request Constraints bind it to objects in the next request and add `path`; other UCP schemas reuse it where a declaration already identifies the object it constrains, such as [`available_instruments[].constraints`](/pr-test/draft/schemas/common/types/available_payment_instrument.json), whose object is the `constraint_target` declared by the instrument schema for that entry's `type`.
+
+### Path
+
+Every `request_constraints` value has exactly one effective path. When `path` is omitted, the effective path is the [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535.html) Normalized Path from the authoritative response root to the structured response object whose `ucp` member contains `request_constraints`. When the Business provides `path`, that value becomes the effective path and supersedes the Normalized Path that would otherwise be derived; the Business **MUST** make it a complete RFC 9535 JSONPath query. In both cases, the effective path is evaluated against the next logical UCP request to that resource. The effective path therefore differs from response-targeting paths elsewhere in UCP, such as `messages[].path`, which are evaluated against the response that carries them.
+
+An omitted path establishes positional correspondence for the next request, not stable identity: an array index still identifies that position if items reorder before that request. A Business **MUST** provide an explicit `path` when the Normalized Path of that structured response object does not identify the intended request objects. When a constraint must follow a stable identity into the next request, the Business **MUST** use an explicit query that encodes that association.
+
+A Business that constructs a query from data **MUST** serialize and escape each dynamic value as a valid RFC 9535 literal and **MUST NOT** use unsafe string concatenation.
+
+Before emitting a value, a Business **MUST** validate the complete value against the shared [Request Constraints](/pr-test/draft/schemas/common/types/request_constraints.json) schema, and a Platform **MUST** do the same before using that value for preflight; `path` selects the objects and the remaining members form the [Constraint Expression](/pr-test/draft/schemas/common/types/constraint_expression.json).
+
+A constraint is not tied to an operation name; it applies to every object its path selects. A path that selects zero objects has no effect. When `request_constraints` is in the response root's `ucp` member and `path` is omitted, the effective path is `$`.
+
+If multiple paths select the same object, every corresponding Constraint Expression applies. The shared Request Constraints schema validates each value independently and cannot guarantee that expressions across overlapping paths can all be satisfied. A Business **MUST** ensure expressions that can apply to the same object are jointly satisfiable. Contradictory requirements on the same property are a Business authoring error.
+
+A Platform that performs preflight on overlapping values evaluates every value it chose; if any chosen value fails for the concrete request, preflight fails. There is no precedence or override.
+
+### Guidelines
+
+#### Business
+
+A Business **MAY** include `ucp.request_constraints` in an authoritative response to describe rules it will enforce against request data in the next Platform request. The Business **MUST** emit Request Constraints that conform to the shared Request Constraints schema, **MUST** use valid effective paths that select only objects, and **MUST** enforce every constraint it emits against that next request.
+
+A Business **SHOULD NOT** emit Request Constraints for rules that may change before the next request unless it can continue to enforce the advertised constraint. Execution-time conditions such as inventory availability, fraud decisions, and payment authorization remain governed by the operation's existing outcomes and `messages`.
+
+#### Platform
+
+A Platform **MAY** use `ucp.request_constraints` for preflight before submitting request data. It **MAY** evaluate any supported subset of values. This preflight is optional and advisory.
+
+A malformed or unsupported value, a value whose path selects a non-object, or a value the Platform cannot evaluate within its resource limits is unavailable for preflight, not a pass or failure. A Platform performing preflight **MUST** skip the whole unavailable value and continue with any other chosen values. If complete evaluation finds a violation, that value fails preflight.
+
+A successful preflight result covers only the values the Platform evaluated. UCP defines no new wire status or issue-marker field for preflight results.
+
+### Scope and lifecycle
+
+Each authoritative resource response from the Business supplies Request Constraints for the next request to that resource. The authoritative response to that request supplies the constraints for the following request and replaces the prior set. Omission clears the set. Invalid values in the new set do not preserve stale values, and sets are not merged by `path`.
+
+Only `request_constraints` values attached to eligible structured response objects under the [Reserved `ucp` Member](#the-ucp-protocol-namespace) rules make up the set; dictionary keys are data.
+
+A response without an authoritative resource supplies no Request Constraints set for a following request. A response containing an authoritative resource supplies the set even when it reports an application error. A partial authoritative resource representation supplies a set only when the resource contract defines its scope.
+
+### Operation outcomes
+
+Request Constraints provide proactive, machine-evaluable preflight for the next request; `messages` report outcomes from a submitted request, including runtime outcomes. Passing validation against both the resolved request schema and Request Constraints establishes only schema validity; the request can still fail other Business rules. The containing operation's existing semantics and outcome/error contract, including `messages`, continue to govern submitted-request and runtime outcomes. Request Constraints add no outcome or error code.
+
+### Examples
+
+#### Basket-wide and targeted quantities
+
+The following Cart responses are alternatives that illustrate different scopes.
+
+```json
+{
+  "ucp": {
+    "version": "draft",
+    "request_constraints": {
+      "path": "$['line_items'][*]",
+      "properties": {
+        "quantity": {"const": 1}
+      }
+    }
+  },
+  "id": "cart_123",
+  "line_items": [
+    {
+      "id": "line_123",
+      "item": {
+        "id": "sku_123",
+        "title": "Bulk screws",
+        "price": 1200
+      },
+      "quantity": 1,
+      "totals": [
+        {"type": "subtotal", "amount": 1200},
+        {"type": "total", "amount": 1200}
+      ]
+    }
+  ],
+  "currency": "USD",
+  "totals": [
+    {"type": "subtotal", "amount": 1200},
+    {"type": "total", "amount": 1200}
+  ]
+}
+```
+
+```json
+{
+  "ucp": {
+    "version": "draft"
+  },
+  "id": "cart_123",
+  "line_items": [
+    {
+      "id": "line_123",
+      "item": {
+        "id": "sku_123",
+        "title": "Bulk screws",
+        "price": 1200
+      },
+      "quantity": 100,
+      "totals": [
+        {"type": "subtotal", "amount": 120000},
+        {"type": "total", "amount": 120000}
+      ],
+      "ucp": {
+        "request_constraints": {
+          "path": "$['line_items'][?@['id'] == 'line_123']",
+          "properties": {
+            "quantity": {"const": 100}
+          }
+        }
+      }
+    }
+  ],
+  "currency": "USD",
+  "totals": [
+    {"type": "subtotal", "amount": 120000},
+    {"type": "total", "amount": 120000}
+  ]
+}
+```
+
+The basket-wide response emits a root constraint that applies quantity `1` to every Line Item in the next request. The targeted response uses ambient local authoring and a stable-ID path to apply quantity `100` only to the Line Item whose `id` is `line_123`; stable-ID rebinding survives reorder. If that path finds no match, it selects zero objects and has no effect. These are separate responses and alternatives. Combining them as written would create contradictory constraints for `line_123` and is a Business authoring error.
+
+#### Locked negotiated discount codes
+
+This Checkout response has the Discount extension active and advertises Request Constraints for the next Checkout Update request. Because `request_constraints` is in the Checkout response root's `ucp`, omitting `path` derives that structured response object's Normalized Path. For this root placement, the derived path is `$`, which selects the next request root.
+
+```json
+{
+  "ucp": {
+    "version": "draft",
+    "status": "success",
+    "capabilities": {
+      "dev.ucp.shopping.checkout": [
+        {"version": "draft"}
+      ],
+      "dev.ucp.shopping.discount": [
+        {"version": "draft"}
+      ]
+    },
+    "payment_handlers": {},
+    "request_constraints": {
+      "required": ["discounts"],
+      "properties": {
+        "discounts": {
+          "required": ["codes"],
+          "properties": {
+            "codes": {"const": ["ACME-X7Q9-L2M4"]}
+          }
+        }
+      }
+    }
+  },
+  "id": "checkout_123",
+  "status": "incomplete",
+  "currency": "USD",
+  "line_items": [
+    {
+      "id": "line_123",
+      "item": {
+        "id": "sku_123",
+        "title": "Bulk screws",
+        "price": 1200
+      },
+      "quantity": 24,
+      "totals": [
+        {"type": "subtotal", "amount": 28800},
+        {"type": "total", "amount": 28800}
+      ]
+    }
+  ],
+  "totals": [
+    {"type": "subtotal", "amount": 28800},
+    {"type": "total", "amount": 28800}
+  ],
+  "links": [
+    {
+      "type": "terms_of_service",
+      "url": "https://business.example/terms"
+    }
+  ],
+  "discounts": {
+    "codes": ["ACME-X7Q9-L2M4"]
+  }
+}
+```
+
+The next Checkout Update request is valid only if it satisfies the resolved request schema, contains `discounts.codes`, and supplies exactly `["ACME-X7Q9-L2M4"]`.
+
+#### Billing address on a submitted card instrument
+
+In this example, a Business emits `ucp.request_constraints` on an available card instrument to require `billing_address` in the next request if it contains a matching submitted card instrument:
+
+```json
+{
+  "type": "card",
+  "ucp": {
+    "request_constraints": {
+      "path": "$['payment']['instruments'][?@['handler_id'] == 'processor_1' && @['type'] == 'card']",
+      "required": ["billing_address"]
+    }
+  }
+}
+```
+
+This fragment assumes its containing authoritative response payment-handler declaration has `id: processor_1`. The explicit `path` crosses from the response's `available_instruments[]` shape to submitted `payment.instruments[]` and matches instruments by `handler_id` and `type`. If the next request contains a match, the constraint requires `billing_address` on every matching instrument. The payment-handler or instrument contract defines any stronger association. This example does not define card brands, credentials, support, availability, or payment policy.
+
+#### Alternative verification requirements on a submitted credential
+
+A Business accepts more than one credential shape and requires different verification data for each. In this example, a PAN must carry a `cvc`, and a network token must carry a `cryptogram` with its `eci_value`. Each credential family is its own schema, so every branch discriminates on the credential's own `type` and no rule has to branch on a sibling field:
+
+```json
+{
+  "type": "card",
+  "ucp": {
+    "request_constraints": {
+      "path": "$['payment']['instruments'][?@['handler_id'] == 'processor_1' && @['type'] == 'card']",
+      "required": ["credential"],
+      "properties": {
+        "credential": {
+          "anyOf": [
+            {
+              "properties": {"type": {"const": "pan"}},
+              "required": ["cvc"]
+            },
+            {
+              "properties": {"type": {"const": "network_token"}},
+              "required": ["cryptogram", "eci_value"]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+One path selects the submitted instrument, and one Object Constraint describes it. The sibling `required` applies to every matching instrument; the `anyOf` branches then apply to the nested `credential` object, which must satisfy at least one. Each branch pins `type` with `const`, so a branch matches only the credential family it describes; [`payment_credential.json`](/pr-test/draft/schemas/common/types/payment_credential.json) already requires `type` on every credential, so no branch has to name it in `required`. A [PAN credential](/pr-test/draft/schemas/common/types/pan_credential.json) without a `cvc` fails, as does a [network token](/pr-test/draft/schemas/common/types/network_token_credential.json) missing its `eci_value`.
+
+Because every branch pins the discriminator, the branch set also closes the accepted credential families. A handler [token credential](/pr-test/draft/schemas/common/types/token_credential.json) is a valid credential at this position but satisfies neither branch, so this Business does not accept it at this path. A Business that later accepts another family adds a branch for it.
+
+Two separately targeted constraints cannot express this rule. Request Constraints conjoin, so one value requiring `cvc` and another requiring `cryptogram` would require both. Discriminating through the path filter instead — selecting `pan` credentials in one value and `network_token` credentials in another — moves conditional logic into the selector, which paths do not carry.
+
 ## Actions
 
 An Action is an outstanding unit of extension-defined work for a Platform to process. Its presence means the effect defined by its Action type is gated. Actions appear only in responses, under the `actions` map. The common fields identify the work but do not define how to process it; the active extension does.
 
-This section defines the common Actions shape and the invariants every adopting response shares. The shape is reusable, but a capability supports Actions only when its specification explicitly adopts it and defines the parent-specific behavior: where Actions appear, the effect each Action type gates, how Messages apply, and how a later response reflects processing. Schema composition alone does not establish support. Cart, Checkout, and Catalog adopt this shape; see [Cart — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/cart/#actions), [Checkout — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#actions), and [Catalog — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/catalog/#actions) for their parent-specific contracts.
+This section defines the common Actions shape and the invariants every adopting response shares. The shape is reusable, but a capability supports Actions only when its specification explicitly adopts it and defines the parent-specific behavior: where Actions appear, the effect each Action type gates, how Messages apply, and how a later response reflects processing. Schema composition alone does not establish support. Cart, Checkout, and Catalog adopt this shape; see [Cart — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/cart/#actions), [Checkout — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/#actions), and [Catalog — Actions](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/catalog/#actions) for their parent-specific contracts.
 
 Actions and Messages have different roles. An Action represents outstanding work: it carries an identity and extension-owned processing configuration. A Message communicates explanatory or diagnostic context about the current response and can identify an exact Action occurrence through its RFC 9535 `path`. When a Message includes `path`, the Business **MUST** make it an RFC 9535 JSONPath expression relative to the root of the containing UCP response object. Messages do not define how an Action is processed or determine its outcome, and neither an Action nor a Message requires the other.
 
@@ -42,7 +390,7 @@ For example, a Business can surface one outstanding Action beside an explanatory
 }
 ```
 
-The Action identifies the outstanding work and carries extension-owned processing configuration under `config`. The Message's `path` selects the exact Action occurrence it explains. The [checkout eligibility example](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#eligibility-verification-at-completion) composes this pattern into a complete Student Verification flow.
+The Action identifies the outstanding work and carries extension-owned processing configuration under `config`. The Message's `path` selects the exact Action occurrence it explains. The [checkout eligibility example](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/#eligibility-verification-at-completion) composes this pattern into a complete Student Verification flow.
 
 For a newly processed successful response from a capability that adopts Actions, the Business **MUST** include every outstanding Action and **MUST** omit `actions` when none are outstanding.
 
@@ -56,7 +404,7 @@ When an Action prevents a Cart or Checkout operation from succeeding, processing
 
 Each Action key is a reverse-domain **Action type**: the name identifies the type of outstanding work, which is not necessarily the name of the extension that declares it. An active extension declares each Action type and defines its `config`, how a Platform processes it, its trust and fallback, and its outcomes. A single extension can declare more than one Action type. Each declaring extension contributes its Action-type keys to the containing capability's schema through `allOf` composition (see [Schema Composition](#schema-composition)), and capability negotiation selects which extensions are active. Negotiating an extension activates the whole contract it declares, including every Action type within it.
 
-Action type keys follow existing [Namespace Governance](#namespace-governance) rules: an extension can declare only types within a reverse-domain namespace controlled by its schema authority. An extension can use its own name as the key for a single Action type — as the [Student Verification example](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#eligibility-verification-at-completion) does — or declare several Action types under distinct keys. Each value is a non-empty array of outstanding instances of that one Action type. The key identifies the type, so an instance carries no separate type discriminator; a Business surfaces multiple outstanding instances of the same type as multiple entries in that array.
+Action type keys follow existing [Namespace Governance](#namespace-governance) rules: an extension can declare only types within a reverse-domain namespace controlled by its schema authority. An extension can use its own name as the key for a single Action type — as the [Student Verification example](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/#eligibility-verification-at-completion) does — or declare several Action types under distinct keys. Each value is a non-empty array of outstanding instances of that one Action type. The key identifies the type, so an instance carries no separate type discriminator; a Business surfaces multiple outstanding instances of the same type as multiple entries in that array.
 
 The `actions` map does not define a processing order across Action types. Within a single type's array, JSON preserves the order of its instances, and the extension that declares the type defines whether that order carries processing meaning. When ordering across Action types matters, the declaring extension defines the sequencing and which Action types become outstanding at each step.
 
@@ -93,7 +441,7 @@ The declaring extension defines the concrete trust, execution, and fallback rule
 
 ## Discovery, Governance, and Negotiation
 
-UCP separates protocol version compatibility from capability negotiation. The business's profile at `/.well-known/ucp` describes capabilities for the protocol version it declares. Businesses that support older protocol versions **SHOULD** publish version-specific profiles and advertise them via the `supported_versions` field — a map from protocol version to profile URI, enabling platforms to discover the exact capabilities for a specific protocol version. Version lifecycle, including when to deprecate or remove older versions from `supported_versions`, is a business policy decision. The protocol does not prescribe a deprecation schedule. Capability negotiation follows a server-selects architecture where the business (server) determines the active capabilities from the intersection of both parties' declared capabilities. Both business and platform profiles can be cached by both parties, allowing efficient capability negotiation within the normal request/response flow between platform and business.
+UCP separates [protocol version selection](#protocol-version) from [capability negotiation](#capability-versions). A Business advertises its current protocol version and links to profiles for older supported versions. After the Platform selects one exact version, the Business determines the active capabilities from the versions both parties advertise. Version lifecycle, including when to remove an older version, is a Business policy decision; UCP does not prescribe a deprecation schedule. Business and Platform profiles can be cached by both parties.
 
 ### Namespace Governance
 
@@ -190,6 +538,8 @@ A **service** defines the API surface for a vertical (shopping, common, etc.). S
 - **A2A**: Agent Card Specification
 - **EP(embedded)**: OpenRPC (JSON format)
 
+A service is identified by its reverse-domain registry key (e.g., `dev.ucp.shopping`). In a profile, services are keyed by that name, and each entry in `services[name][]` pairs the service with one transport binding and declares the service `version`: in release `D` that version is `D`. This is the service version, not a transport version — the binding has no separate version. The OpenAPI or OpenRPC artifact a binding references carries its own `info.version` as release metadata, not a separate version to negotiate. See [Component Versioning and Release Snapshots](#component-versioning-and-release-snapshots).
+
 #### Service Definition
 
 Full service declaration for platform-level discovery. All transports require `version`, `spec`, and `transport`. REST, MCP, and embedded additionally require `schema`.
@@ -261,7 +611,7 @@ An **extension** is an optional module that augments another capability. Extensi
   "dev.ucp.shopping.fulfillment": [
     {
       "version": "draft",
-      "spec": "https://ucp.dev/draft/specification/fulfillment",
+      "spec": "https://ucp.dev/draft/specification/shopping/extensions/fulfillment",
       "schema": "https://ucp.dev/draft/schemas/shopping/fulfillment.json",
       "extends": "dev.ucp.shopping.checkout"
     }
@@ -278,7 +628,7 @@ Extensions **MAY** extend multiple parent capabilities by using an array:
   "dev.ucp.shopping.discount": [
     {
       "version": "draft",
-      "spec": "https://ucp.dev/draft/specification/discount",
+      "spec": "https://ucp.dev/draft/specification/shopping/extensions/discount",
       "schema": "https://ucp.dev/draft/schemas/shopping/discount.json",
       "extends": ["dev.ucp.shopping.checkout", "dev.ucp.shopping.cart"]
     }
@@ -345,13 +695,14 @@ This convention ensures:
 
 ##### Version Requirements
 
-Extension schemas **SHOULD** declare a `requires` object (alongside `name`, `title`, `description`) to indicate the protocol and capability versions required for correct operation:
+Extension authors **SHOULD** declare a `requires` object in the extension schema (alongside its `name`, `title`, and `description`) stating the versions the extension depends on. A third-party extension schema declares its own author-controlled `version`, which advances independently of `ucp.version`; a UCP-authored `dev.ucp.*` extension declares version `D` in release `D`. `requires.protocol` constrains the selected `ucp.version`, and `requires.capabilities` constrains the selected versions of the named capabilities:
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://acme.com/ucp/schemas/loyalty.json",
   "name": "com.acme.shopping.loyalty",
+  "version": "2026-06-15",
   "title": "Acme Loyalty Points",
   "requires": {
     "protocol": { "min": "2026-01-23" },
@@ -378,7 +729,7 @@ Each constraint is an object with a required `min` (inclusive) and optional `max
 }
 ```
 
-Keys in `requires.capabilities` **MUST** be a subset of the extension's `$defs` keys. If `requires` is present, platforms and businesses **MUST** verify the negotiated protocol version and capability versions satisfy the declared constraints during schema resolution. Incompatible extensions are excluded from the active capability set (see [Resolution Flow](#resolution-flow)). If `requires` is absent, the extension is assumed to be compatible with the versions declared by the profile.
+Keys in `requires.capabilities` **MUST** be a subset of the extension's `$defs` keys. These ranges verify dependencies after exact versions are selected; they do not select versions. The `ucp.version` is fixed first by [profile selection](#protocol-version) and capability versions by the [intersection algorithm](#intersection-algorithm); then, if `requires` is present, Platforms and Businesses **MUST** verify that the selected `ucp.version` and capability versions satisfy the declared constraints during schema resolution. Incompatible extensions are excluded from the active capability set (see [Resolution Flow](#resolution-flow)). If `requires` is absent, the extension is assumed to be compatible with the versions declared by the profile.
 
 #### Schema Resolution Convention
 
@@ -430,27 +781,27 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
       "dev.ucp.shopping": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/overview",
+          "spec": "https://ucp.dev/draft/specification/overview/",
           "transport": "rest",
           "endpoint": "https://business.example.com/ucp/v1",
           "schema": "https://ucp.dev/draft/services/shopping/rest.openapi.json"
         },
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/overview",
+          "spec": "https://ucp.dev/draft/specification/overview/",
           "transport": "mcp",
           "endpoint": "https://business.example.com/ucp/mcp",
           "schema": "https://ucp.dev/draft/services/shopping/mcp.openrpc.json"
         },
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/overview",
+          "spec": "https://ucp.dev/draft/specification/overview/",
           "transport": "a2a",
           "endpoint": "https://business.example.com/.well-known/agent-card.json"
         },
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/overview",
+          "spec": "https://ucp.dev/draft/specification/overview/",
           "transport": "embedded",
           "schema": "https://ucp.dev/draft/services/shopping/embedded.openrpc.json"
         }
@@ -460,14 +811,14 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
       "dev.ucp.shopping.checkout": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/checkout",
+          "spec": "https://ucp.dev/draft/specification/shopping/checkout",
           "schema": "https://ucp.dev/draft/schemas/shopping/checkout.json"
         }
       ],
       "dev.ucp.shopping.fulfillment": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/fulfillment",
+          "spec": "https://ucp.dev/draft/specification/shopping/extensions/fulfillment",
           "schema": "https://ucp.dev/draft/schemas/shopping/fulfillment.json",
           "extends": "dev.ucp.shopping.checkout"
         }
@@ -475,7 +826,7 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
       "dev.ucp.shopping.discount": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/discount",
+          "spec": "https://ucp.dev/draft/specification/shopping/extensions/discount",
           "schema": "https://ucp.dev/draft/schemas/shopping/discount.json",
           "extends": "dev.ucp.shopping.checkout"
         }
@@ -483,7 +834,7 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
       "dev.ucp.common.identity_linking": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/identity-linking",
+          "spec": "https://ucp.dev/draft/specification/common/identity-linking/",
           "schema": "https://ucp.dev/draft/schemas/common/identity_linking.json",
           "config": {
             "providers": {
@@ -510,7 +861,7 @@ Businesses publish their profile at `/.well-known/ucp`. An example:
             {
               "type": "card",
               "constraints": {
-                "brands": ["visa", "mastercard", "amex"]
+                "properties": { "brand": { "enum": ["visa", "mastercard", "amex"] } }
               }
             }
           ],
@@ -574,7 +925,7 @@ Platform profiles are similar and include signing keys for capabilities requirin
       "dev.ucp.shopping": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/overview",
+          "spec": "https://ucp.dev/draft/specification/overview/",
           "transport": "rest",
           "schema": "https://ucp.dev/draft/services/shopping/rest.openapi.json",
           "endpoint": "https://platform.example.com/ucp/v1"
@@ -585,14 +936,14 @@ Platform profiles are similar and include signing keys for capabilities requirin
       "dev.ucp.shopping.checkout": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/checkout",
+          "spec": "https://ucp.dev/draft/specification/shopping/checkout",
           "schema": "https://ucp.dev/draft/schemas/shopping/checkout.json"
         }
       ],
       "dev.ucp.shopping.fulfillment": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/fulfillment",
+          "spec": "https://ucp.dev/draft/specification/shopping/extensions/fulfillment",
           "schema": "https://ucp.dev/draft/schemas/shopping/fulfillment.json",
           "extends": "dev.ucp.shopping.checkout"
         }
@@ -600,7 +951,7 @@ Platform profiles are similar and include signing keys for capabilities requirin
       "dev.ucp.shopping.order": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/order",
+          "spec": "https://ucp.dev/draft/specification/shopping/order",
           "schema": "https://ucp.dev/draft/schemas/shopping/order.json",
           "config": {
             "webhook_url": "https://platform.example.com/webhooks/ucp/orders"
@@ -610,7 +961,7 @@ Platform profiles are similar and include signing keys for capabilities requirin
       "dev.ucp.common.identity_linking": [
         {
           "version": "draft",
-          "spec": "https://ucp.dev/draft/specification/identity-linking",
+          "spec": "https://ucp.dev/draft/specification/common/identity-linking/",
           "schema": "https://ucp.dev/draft/schemas/common/identity_linking.json"
         }
       ]
@@ -642,7 +993,7 @@ Platform profiles are similar and include signing keys for capabilities requirin
           "spec": "https://example.com/specs/payments/processor_tokenizer-payment",
           "schema": "https://example.com/schemas/payments/delegate-payment.json",
           "available_instruments": [
-            {"type": "card", "constraints": {"brands": ["visa", "mastercard"]}}
+            {"type": "card", "constraints": {"properties": {"brand": {"enum": ["visa", "mastercard"]}}}}
           ]
         }
       ]
@@ -661,6 +1012,88 @@ Platform profiles are similar and include signing keys for capabilities requirin
   ]
 }
 ```
+
+### The `ucp` Protocol Namespace
+
+The member name `ucp` is reserved as the **protocol namespace** in every structured UCP object scope — an object whose members are schema-defined fields. The top-level `ucp` member that profiles and responses carry — described in [Profile Structure](#profile-structure) above — is not a special wrapper; it is the root manifestation of this reservation: a reserved member of the root object. The reservation does not apply to a dictionary container, whose keys are data rather than fields. A dictionary key named `ucp` is ordinary data. A structured object used as a dictionary value remains an eligible scope. Schema authors **MUST NOT** define a domain field named `ucp` in structured object schemas or extensions.
+
+At each eligible structured scope, `ucp` carries the protocol's statements about that scope: protocol metadata at the root (version, services, capabilities, payment handlers) and structural annotations such as [`map_order`](#map_order).
+
+**Openness.** The `ucp` container is open. Consumers **MUST** ignore members inside `ucp` that they do not recognize (tolerant reader). Openness exists so documents produced under a newer UCP version remain readable by older consumers — it is *not* extension space. Only UCP core defines members inside `ucp`, and extension authors **MUST NOT** place extension data there. An unrecognized member inside `ucp` means "defined by a newer UCP version," never "extension data."
+
+**No direct recursion.** Producers **MUST NOT** emit a `ucp` member as a direct child of another `ucp` member (`ucp.ucp`). If one is present, a receiving Business or Platform **MUST NOT** interpret it as another protocol namespace and **MUST** ignore that child. Structured objects beneath the namespace, such as a capability's `config`, remain eligible for their own `ucp` member.
+
+**Ambient vocabulary.** The protocol namespace is ambient within structured UCP objects: a Business or Platform **MAY** include a `ucp` member at any eligible structured scope, and its contents are defined exclusively by UCP core's vocabulary — the member is part of the UCP document grammar, like the name reservation itself. The reservation stops at a dictionary container. A Business or Platform **MUST NOT** interpret a dictionary key named `ucp` as the protocol namespace; the key and its value are ordinary dictionary data. For example, `attribution` is a dictionary of string values, so an attribution key named `ucp` is ordinary attribution data, not a protocol-namespace member. Guidance for schema authors on working within this reservation lives in the Schema Authoring Guide's [The Reserved `ucp` Member](/documentation/schema-authoring/#the-reserved-ucp-member) section. A Business or Platform encountering a `ucp` member at an eligible structured scope processes the members it recognizes, each per its own definition, and **MUST** ignore unrecognized members (see *Openness* above). A member is admitted to the vocabulary only if it is safe to ignore: a Business or Platform that does not process it loses only that member's benefit, never correctness. A Business or Platform that ignores `map_order`, for example, simply traverses the map unordered — the status quo before ordering existed.
+
+**Scope determines obligations.** At the root of profiles and responses, the `ucp` envelope additionally carries the required protocol metadata exactly as specified elsewhere in this document — this section changes none of those obligations. A Business or Platform **MAY** omit the member at every other eligible structured scope. Dictionary containers are not eligible scopes and carry no protocol-namespace obligation. Conformance to the vocabulary is defined by this specification's processing rules, not by ordinary instance validation against open UCP source schemas; that validation treats ambient `ucp` members as ignored unknown objects.
+
+**Vocabulary applicability.** Each registered protocol-namespace member defines the document contexts and message directions where it applies.
+
+**Schema processing.** UCP source schemas are open by default, so ordinary validation against them may accept ambient `ucp` without applying the protocol vocabulary. For a selected message direction, a UCP-aware resolver **MUST** produce a resolved schema that recognizes and validates ambient `ucp` at every eligible structured scope against the central vocabulary in `ucp.json#/$defs/members`, subject to that vocabulary's applicability in the selected direction. The `ucp` namespace remains open to unrecognized members for forward compatibility, even if the resolved schema rejects other unknown domain fields. The result is ordinary JSON Schema that standard validators and code generators can consume.
+
+#### `map_order`
+
+JSON object members are unordered: member order is not guaranteed to survive parsing, and [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html) (JSON Canonicalization Scheme), which UCP signing relies on, sorts object member names while preserving array element order. `map_order` uses an array so its declared order survives canonicalization and signing.
+
+`map_order` declares a preferred key-traversal order for map-valued fields in the scope annotated by its containing `ucp` member. At a nested scope, each key of `map_order` names a map field on the object that contains `ucp`. At the document root, each key instead names a sibling map field inside the root `ucp` envelope. Root domain fields outside `ucp`, such as a checkout response's `actions`, are not targets. Each value is an array of the target map's keys in preferred traversal order.
+
+`map_order` does not apply to UCP operation requests.
+
+For a target map field `<field>` and its companion array `map_order.<field>`:
+
+1. Producers **MUST NOT** rely on JSON object member order for UCP map-valued registries; `map_order` is the order carrier.
+1. `map_order.<field>` contains keys from the target map field `<field>` in preferred traversal order.
+1. The order array **MAY** be partial: listed keys are traversed first, in array order.
+1. Unlisted map keys remain valid and available; consumers traverse them after the listed keys, using the field-defined fallback order or, if the field defines none, the [property-name ordering defined by RFC 8785](https://www.rfc-editor.org/rfc/rfc8785.html#section-3.2.3).
+1. The order array is not an allowlist: consumers **MUST NOT** interpret omission of a key as removal, ineligibility, or reduced support.
+1. Producers **MUST** name a present, map-valued target and **MUST** list only keys present in that target map. A receiving Business or Platform **MUST NOT** reject the containing document solely because an entry names an absent, unrecognized, or non-map target, or a key absent from its target map. If it processes `map_order`, it **MUST** ignore the unusable entry.
+1. Producers **MUST NOT** list the same map key more than once in an order array. Consumers **MUST NOT** reject the containing document solely because an order array repeats a map key. Consumers that process `map_order` **MUST** honor the first occurrence and ignore later repetitions.
+1. If `map_order`, or its entry for a field, is absent, no order is declared; consumers **MUST NOT** fall back to object member order.
+1. A field's own specification defines what ordered traversal *means* for it (presentation, negotiation priority, and so on) — `map_order` carries order and nothing else.
+
+Rules 3–5 are a deliberate divergence from conventions in which unlisted keys are an error or are dropped: partial lists are always valid, and unlisted keys are always retained.
+
+A business profile ordering its payment handlers:
+
+```json
+{
+  "ucp": {
+    "version": "draft",
+    "services": { ... },
+    "payment_handlers": {
+      "com.google.pay": [
+        { "id": "gpay", "version": "draft" }
+      ],
+      "dev.shopify.shop_pay": [
+        { "id": "shop_pay", "version": "draft" }
+      ]
+    },
+    "map_order": {
+      "payment_handlers": ["dev.shopify.shop_pay", "com.google.pay"]
+    }
+  }
+}
+```
+
+`map_order` is scope-generic — the same mechanism orders sibling maps at any eligible structured scope, as when a Business orders the identity-provider registry inside a capability's `config`:
+
+```json
+{
+  "providers": {
+    "app.example.login": [
+      {"type": "oauth2", "auth_url": "https://login.example.app"}
+    ],
+    "com.google": [
+      {"type": "oauth2", "auth_url": "https://accounts.google.com"}
+    ]
+  },
+  "ucp": {
+    "map_order": {"providers": ["app.example.login", "com.google"]}
+  }
+}
+```
+
+What an order *means* remains per-field (rule 9); the one traversal semantics defined today is the business's presentation preference for `payment_handlers` — see [Payment Handlers](#payment-handlers).
 
 ### Platform Advertisement on Request
 
@@ -1060,11 +1493,12 @@ For the full verifier algorithm — capability-based key resolution, profile fet
 
 #### Hosting
 
-Both profiles must be reliably hosted. An unreliable or misconfigured profile endpoint may prevent the other party from processing requests.
+Profiles, and the schema and transport-description artifacts they reference, must be reliably hosted. An unreliable or misconfigured endpoint may prevent the other party from processing requests.
 
-1. Profiles **MUST** be served over HTTPS.
+1. Published artifacts **MUST** be served over HTTPS.
 1. Profile endpoints **MUST NOT** use redirects (3xx).
-1. Profile responses **MUST** include a `Cache-Control` header with `public` and `max-age` of at least 60 seconds. Profiles **MUST NOT** be served with `private`, `no-store`, or `no-cache` directives.
+1. Published artifacts **MUST** include a `Cache-Control` header with `public` and `max-age` of at least 60 seconds, and **MUST NOT** be served with `private`, `no-store`, or `no-cache` directives.
+1. Published artifacts **SHOULD** include a validator (`ETag` or `Last-Modified`) so consumers can revalidate cached copies efficiently.
 
 Profiles represent a party's stable identity and capabilities. Profile URLs are expected to remain consistent across requests and not contain per-transaction or per-session configuration — the caching policy above enforces this by requiring shared cache support with a minimum TTL.
 
@@ -1136,7 +1570,7 @@ The request **MUST** be rejected (`key_not_found`, `algorithm_unsupported`, or r
 
 **Authenticated identity.** When a signature verifies, the authenticated signer is identified by the URL that supplied the verifying key — the `Signature-Agent` URL for WBA-shape signatures, the `UCP-Agent` URL for default UCP signatures. Both URLs may be present in the same request; the identity attached to the request is determined by which signature verified, not by which headers were sent. When multiple signatures verify, each identifies the signer only as the URL that supplied its key — a key resolved via `Signature-Agent` proves control of that key source, not of the `UCP-Agent` profile (whose URL is merely a signed header value). Implementations **MUST** treat the request as a single authenticated identity only when those URLs are the same after normalization; otherwise they are distinct identities and policy decides whether either suffices.
 
-This rule governs **HTTP transport identity**. Payload-layer assertions (e.g., AP2 mandate JWTs carried in the request body) have their own identity binding and key-resolution rules; see [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md).
+This rule governs **HTTP transport identity**. Payload-layer assertions (e.g., AP2 mandate JWTs carried in the request body) have their own identity binding and key-resolution rules; see [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md).
 
 ## Payment Architecture
 
@@ -1154,9 +1588,9 @@ The payment architecture is built on a "Trust-by-Design" philosophy. It assumes 
 
 #### Enhanced Security for Autonomous Commerce
 
-For scenarios requiring cryptographic proof of user authorization (e.g., autonomous AI agents), UCP supports the **AP2 Mandates Extension** (`dev.ucp.shopping.ap2_mandate`). This optional extension provides non-repudiable authorization through verifiable digital credentials.
+For scenarios requiring cryptographic proof of user authorization (e.g., autonomous AI agents), UCP supports the **AP2 Mandates Extension** (`dev.ucp.common.payment.ap2_mandate`). This optional extension provides non-repudiable authorization through verifiable digital credentials.
 
-See [Transaction Integrity](#transaction-integrity-and-non-repudiation) and [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md) for details on when and how to use this extension.
+See [Transaction Integrity](#transaction-integrity-and-non-repudiation) and [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md) for details on when and how to use this extension.
 
 #### Credential Flow & PCI Scope
 
@@ -1197,9 +1631,11 @@ Payment handlers allow for a variety of different payment instruments and token-
 
 **Dynamic Filtering:** Businesses **MUST** filter the `handlers` list based on the context of the cart (e.g., removing "Buy Now Pay Later" for subscription items, or filtering regional methods based on shipping address).
 
-**Available Instrument Resolution:** Within each active handler, both the platform and the business independently advertise `available_instruments` — the set of instrument types and constraints each party supports. The business is responsible for resolving these into an authoritative value in the checkout response. The platform's declaration (from its profile) signals what it can handle; the business intersects that with its own `business_schema` declaration and cart context, then returns the resolved result. Platforms **MUST** treat the `available_instruments` in the response as authoritative for that checkout. See the [Payment Handler Guide](https://sakinaroufid.github.io/pr-test/draft/specification/payment-handler-guide/#resolving-available_instruments) for the full resolution semantics.
+**Presentation Order:** Businesses **MAY** declare a preferred presentation order for their advertised handlers via `map_order.payment_handlers` in their profile and response envelopes (see [The `ucp` Protocol Namespace](#the-ucp-protocol-namespace)). The preference is suggestive: it communicates the business's preferred presentation — typically a conversion or risk judgment — and platforms **SHOULD** take it into account but **MAY** apply their own ordering. The same suggestive preference applies within a handler: the order of the business's advertised `available_instruments` array communicates preferred instrument presentation, earliest first. It is distinct from, and does not override, the buyer-side preference a platform submits in `context.payment[]` (buyer-preferred handlers, on the request side); the platform arbitrates between the two.
 
-**Instrument Cardinality:** A checkout submission **MUST** contain exactly one payment instrument unless the `dev.ucp.shopping.split_payments` capability is active. Businesses **MUST** reject submissions that violate this constraint with a `payment_failed` error in `messages[]`. See [Split Payments](https://sakinaroufid.github.io/pr-test/draft/specification/split-payments/index.md) for the extension that relaxes this constraint.
+**Available Instrument Resolution:** Within each active handler, both the platform and the business independently advertise `available_instruments` — the set of instrument types and constraints each party supports. The business is responsible for resolving these into an authoritative value in the checkout response. The platform's declaration (from its profile) signals what it can handle; the business intersects that with its own `business_schema` declaration and cart context, then returns the resolved result. Platforms **MUST** treat the `available_instruments` in the response as authoritative for that checkout. See the [Payment Handler Guide](https://sakinaroufid.github.io/pr-test/draft/specification/payment/guide/#resolving-available_instruments) for the full resolution semantics.
+
+**Instrument Cardinality:** A checkout submission **MUST** contain exactly one payment instrument unless the `dev.ucp.common.payment.split_payments` capability is active. Businesses **MUST** reject submissions that violate this constraint with a `payment_failed` error in `messages[]`. See [Split Payments](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/split-payments/index.md) for the extension that relaxes this constraint.
 
 ### Implementation Scenarios
 
@@ -1331,7 +1767,7 @@ In this scenario, the platform uses a generic tokenizer to request a session tok
             {
               "type": "card",
               "constraints": {
-                "brands": ["visa", "mastercard"]
+                "properties": { "brand": { "enum": ["visa", "mastercard"] } }
               }
             }
           ],
@@ -1358,9 +1794,10 @@ POST /checkout-sessions/{id}/complete
   "payment": {
     "instruments": [
       {
+        "id": "pi_tok_visa",
         "handler_id": "merchant_tokenizer",
-        // ... more instrument required field
-        "credential": { "token": "tok_visa_123" }
+        "type": "card",
+        "credential": { "type": "card", "token": "tok_visa_123" }
       }
     ]
   },
@@ -1430,8 +1867,9 @@ POST /checkout-sessions/{id}/complete
   "payment": {
     "instruments": [
       {
+        "id": "pi_ap2_card",
         "handler_id": "ap2_234352",
-        // other required instruments fields
+        "type": "card",
         "credential": {
           "type": "card",
           "token": "eyJhbGciOiJ..." // Token would contain payment_mandate, the signed proof of funds auth
@@ -1461,6 +1899,7 @@ Most platform implementations can **avoid PCI-DSS scope** by:
 - Never accessing or storing raw payment data (card numbers, CVV, etc.)
 - Forwarding credentials without the ability to use them directly
 - Using PSP tokenization payment handlers where raw credentials never pass through the platform
+- Presenting pre-provisioned card network tokens (`network_token_credential.json`) rather than an FPAN — the platform never shares the underlying account number, and the token is unusable without a matching cryptogram
 
 #### Business Scope
 
@@ -1489,7 +1928,7 @@ Payment credential providers (PSPs, wallets) are typically PCI-DSS Level 1 certi
 1. Implement idempotency for payment processing (prevent double-charges)
 1. Log payment events without logging credentials
 1. Set appropriate credential timeouts
-1. For autonomous commerce scenarios requiring cryptographic proof, consider supporting the `dev.ucp.shopping.ap2_mandate` extension (see [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md))
+1. For autonomous commerce scenarios requiring cryptographic proof, consider supporting the `dev.ucp.common.payment.ap2_mandate` extension (see [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md))
 
 **For Platforms:**
 
@@ -1498,7 +1937,7 @@ Payment credential providers (PSPs, wallets) are typically PCI-DSS Level 1 certi
 1. Implement timeout handling for credential acquisition
 1. Clear credentials from memory after submission
 1. Handle credential expiration gracefully (re-acquire if needed)
-1. For autonomous agents, consider using the `dev.ucp.shopping.ap2_mandate` extension for cryptographic proof of authorization (see [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md))
+1. For autonomous agents, consider using the `dev.ucp.common.payment.ap2_mandate` extension for cryptographic proof of authorization (see [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md))
 
 **For Payment Credential Providers:**
 
@@ -1521,8 +1960,8 @@ UCP supports fraud prevention through [Signals](#signals) and the payment archit
 
 The core payment architecture described above can be extended for specialized use cases:
 
-- **AP2 Mandates Extension** (`dev.ucp.shopping.ap2_mandate`): Adds cryptographic proof of user authorization for autonomous commerce scenarios where non-repudiable evidence is required. See [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md).
-- **Custom Handler Types**: Payment credential providers can define custom handlers to support new payment instruments. See [Payment Handler Guide](https://sakinaroufid.github.io/pr-test/draft/specification/payment-handler-guide/index.md) for details.
+- **AP2 Mandates Extension** (`dev.ucp.common.payment.ap2_mandate`): Adds cryptographic proof of user authorization for autonomous commerce scenarios where non-repudiable evidence is required. See [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md).
+- **Custom Handler Types**: Payment credential providers can define custom handlers to support new payment instruments. See [Payment Handler Guide](https://sakinaroufid.github.io/pr-test/draft/specification/payment/guide/index.md) for details.
 
 The extension model ensures the core architecture remains simple while supporting advanced security and compliance requirements when needed.
 
@@ -1666,7 +2105,7 @@ Policies describe the business rules applied to the items. A Platform **MAY** re
 
 When a Business **requires** a policy to be shown to the Buyer — a final-sale item, a regulatory notice — it **MUST** emit a `messages[]` warning that:
 
-- sets `presentation: "disclosure"`, so the Platform displays the content and cannot hide or dismiss it (see [Warning Presentation](https://sakinaroufid.github.io/pr-test/draft/specification/checkout/#warning-presentation));
+- sets `presentation: "disclosure"`, so the Platform displays the content and cannot hide or dismiss it (see [Warning Presentation](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/#warning-presentation));
 - sets `path` to the item the notice concerns; and
 - sets `code` to the policy's `type`, linking the notice to its policy.
 
@@ -1832,14 +2271,14 @@ Attribution appears on cart, checkout, and catalog requests as platform-provided
 
 ### Transaction Integrity and Non-Repudiation
 
-For scenarios requiring cryptographic proof of authorization (e.g., autonomous agents, high-value transactions), UCP supports the **AP2 Mandates Extension** (`dev.ucp.shopping.ap2_mandate`). When this optional extension is negotiated:
+For scenarios requiring cryptographic proof of authorization (e.g., autonomous agents, high-value transactions), UCP supports the **AP2 Mandates Extension** (`dev.ucp.common.payment.ap2_mandate`). When this optional extension is negotiated:
 
 - Businesses provide a cryptographic signature on checkout terms
 - Platforms provide cryptographic mandates proving user authorization
 
 This mechanism provides strong, end-to-end cryptographic assurances about transaction details and participant consent, significantly reducing risks of tampering and disputes.
 
-See [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md) for complete specification, implementation guide, and examples.
+See [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md) for complete specification, implementation guide, and examples.
 
 ## Versioning
 
@@ -1847,11 +2286,9 @@ See [AP2 Mandates Extension](https://sakinaroufid.github.io/pr-test/draft/specif
 
 UCP uses date-based versioning in the format `YYYY-MM-DD`. This provides clear chronological ordering and unambiguous version comparison.
 
-### Version Discovery and Negotiation
+### Versioned Profiles
 
-UCP prioritizes strong backwards compatibility. Businesses implementing a version **SHOULD** handle requests from platforms using that version or older.
-
-Both businesses and platforms declare a single version in their profiles:
+UCP prioritizes strong backwards compatibility. Each profile document declares one core release version in `ucp.version`; its services, capabilities, extensions, and payment handlers also carry explicit versions. A Business advertises its current profile and links to profiles for older supported releases through `supported_versions`; see [Protocol Version](#protocol-version).
 
 #### Example
 
@@ -1877,15 +2314,15 @@ Both businesses and platforms declare a single version in their profiles:
 }
 ```
 
-### Version Negotiation
+### Version Selection
 
-Version compatibility operates at two levels: the **protocol version** and **capability versions**. The protocol version (`ucp.version`) governs core protocol mechanisms — discovery, negotiation flow, transport bindings, and signature requirements. Capability versions govern the semantics of each feature independently, as defined in [Independent Component Versioning](#independent-component-versioning).
+Protocol version selection chooses one complete Business profile first. Capability negotiation then selects active capabilities and extensions by exact version intersection within that profile. The sections below define each step; see [Component Versioning and Release Snapshots](#component-versioning-and-release-snapshots) for release alignment and version ownership.
 
 #### Protocol Version
 
 The `version` field declares the business's current protocol version. The profile at `/.well-known/ucp` describes the capabilities, services, and payment handlers available at that version.
 
-Businesses that support older protocol versions **SHOULD** declare a `supported_versions` object mapping each older version to a profile URI. Each URI points to a complete, self-contained profile for that version — including its own capabilities, services, payment handlers, and signing keys. When `supported_versions` is omitted, only `version` is supported.
+Businesses that support older protocol versions **SHOULD** declare a `supported_versions` object mapping each older version to a profile URI. Each URI points to a complete, self-contained profile for that version — whose `ucp.version` equals its map key and which includes its own capabilities, services, payment handlers, and signing keys. When `supported_versions` is omitted, only `version` is supported.
 
 ```json
 {
@@ -1904,12 +2341,14 @@ Businesses that support older protocol versions **SHOULD** declare a `supported_
 
 Platforms discover a business's capabilities through the following flow:
 
-1. Platform fetches `/.well-known/ucp` — this is the current version profile.
-1. If the platform's protocol version matches `version`: use this profile directly. Proceed to capability negotiation.
-1. If the platform's protocol version is a key in `supported_versions`: fetch the profile at the mapped URI. This profile describes the capabilities available at that protocol version. Proceed to capability negotiation.
-1. Otherwise: the business does not support the platform's protocol version. Platforms **SHOULD NOT** send requests with an incompatible version; businesses **MUST** respond with a `version_unsupported` error.
+1. The Platform fetches `/.well-known/ucp` — this is the current version profile.
+1. The Platform selects a mutually supported protocol version from the Business's `version` and `supported_versions` keys; Platforms **SHOULD** prefer the most recent. If the selected version matches `version`, the Platform uses this profile directly and proceeds to capability negotiation.
+1. If the selected version is a key in `supported_versions`: fetch the profile at the mapped URI. The Platform **MUST** verify that the fetched profile's `ucp.version` equals the `supported_versions` key it selected; on mismatch the Platform **MUST NOT** use that profile. Otherwise this profile describes the capabilities available at that protocol version — proceed to capability negotiation.
+1. If no mutually supported version exists, the Business does not support the Platform's protocol version. Platforms **SHOULD NOT** send requests with an incompatible version; Businesses **MUST** respond with a `version_unsupported` error.
 
 Version-specific profiles are leaf documents — they describe exactly one protocol version and **MUST NOT** contain a `supported_versions` field.
+
+A selected profile guarantees compatibility among its declared capabilities at its declared version; across versions, resource representations may differ. Platforms **MAY** run separate negotiations with the same Business at different supported versions, and **SHOULD NOT** combine or intersect capabilities across profiles within the same negotiation.
 
 ##### Request-Time Validation
 
@@ -1960,15 +2399,17 @@ Platforms and businesses **MAY** coordinate on pre-release implementations outsi
 
 #### Capability Versions
 
-Capability versions are negotiated independently of the protocol version. Each capability in the profile is an array. Multiple entries for the same capability, each with a different `version`, advertise support for multiple versions of that capability. The capability intersection algorithm considers only capability versions supported by both parties.
+Capability compatibility is established only by exact version equality, not by inferring compatibility from date order. Each capability in the profile is an array; multiple entries with different `version` values advertise support for multiple versions where the applicable publication policy permits it. When the exact shared set contains more than one version, the intersection algorithm orders those shared dates to select the latest one. Supported third-party extension versions advance independently of `ucp.version`. UCP-authored `dev.ucp.*` entries declare version `D` in release `D`: a profile for `ucp.version = D` advertises version `D` for those entries. Older `dev.ucp.*` versions are advertised only through `supported_versions` leaf profiles, never as additional entries in a newer profile: the registry mechanism supports multi-version arrays, but the core publication contract does not exercise them for `dev.ucp.*` entries. Multi-version arrays therefore arise for third-party extensions whose authors support multiple versions concurrently. The capability intersection algorithm considers only capability versions supported by both parties.
 
 Businesses **MUST** include only capabilities compatible with the negotiated protocol version in their response. A capability that depends on features introduced in a newer protocol version **MUST NOT** be included when processing at an older protocol version.
 
 ### Backwards Compatibility
 
+UCP classifies changes as backwards-compatible or breaking and applies this classification to its own components to govern how a UCP release advances. Publication and backport policy for both classes is defined in [Component Versioning and Release Snapshots](#component-versioning-and-release-snapshots). The lists below describe which changes preserve and which break conforming integrations; third-party extension and payment-handler authors control their own version policy and can apply the same distinction on their own cadence.
+
 #### Backwards-Compatible Changes
 
-The following changes **MAY** be introduced without a new version:
+The following changes are **backwards-compatible**: they do not break conforming integrations.
 
 - Adding new non-required fields to responses
 - Adding new non-required parameters to requests
@@ -1980,7 +2421,7 @@ The following changes **MAY** be introduced without a new version:
 
 #### Breaking Changes
 
-The following changes **MUST NOT** be introduced without a new version:
+The following changes are **breaking**: they break conforming integrations and require a new component version.
 
 - Removing or renaming existing fields
 - Changing field types or semantics
@@ -1990,21 +2431,31 @@ The following changes **MUST NOT** be introduced without a new version:
 - Modifying existing protocol flow or state machine
 - Changing the meaning of existing error codes
 
-### Independent Component Versioning
+### Component Versioning and Release Snapshots
 
-- UCP protocol versions independently from capabilities.
-- Each capability versions independently from other capabilities.
-- Capabilities **MUST** follow the same backwards compatibility rules as the protocol.
-- Businesses **MUST** validate capability version compatibility using the same logic as what's described above.
-- Transports **MAY** define their own version handling mechanisms.
+A UCP release `D` is a snapshot of the core protocol — its services and transport bindings, capabilities, extensions, and shared schemas — published and certified together as internally compatible. Selecting `ucp.version` `D` selects that snapshot. For a release `D`:
 
-#### UCP Capabilities (`dev.ucp.*`)
+1. `ucp.version` is `D`.
+1. Every UCP-defined service declares `version` `D`. Each service entry pairs the service with one transport binding, so every entry under a service repeats that service `version`; transport bindings have no separate version. The referenced OpenAPI/OpenRPC artifacts are published under `D` as release metadata.
+1. Every UCP-defined capability and extension declares `version` `D`, even when its own schema did not change directly.
+1. Shared schemas are published as part of the same snapshot.
+1. UCP certifies the snapshot — components, bindings, and supported compositions — together before publishing it.
 
-UCP-authored capabilities version with protocol releases by default. Individual capabilities **MAY** version independently when breaking changes are required outside the protocol release cycle.
+UCP **MAY** backport an approved backward-compatible change — a feature, or a security, correctness, or interoperability fix — to a supported release and its generated `D` artifacts. Breaking changes enter the next release and are not backported by default; in exceptional cases, the Governance Council **MAY** approve backporting a breaking change to a supported release, limited to defects that compromise the security, correctness, or interoperability of the release as published, and following the breaking-change notice process. UCP **MUST** re-certify the snapshot before publishing any updated artifacts.
 
-#### Vendor Capabilities (`com.{vendor}.*`)
+A dated release works like a long-term-support channel: the date names a compatibility line, and backported changes amend the published `D` snapshot in place — `D` stays the same while its contents change, so parties that fetched at different times can hold different copies of the same `D`. This skew is safe by construction: backports default to the backwards-compatible class, so an earlier copy is missing later additions, never in conflict with them. Parties that fetch artifacts at runtime **SHOULD** follow standard HTTP caching semantics, revalidating a cached copy once its `max-age` expires (see [Hosting](#hosting)); refresh frequency is therefore controlled by the publisher. Parties that consume artifacts at build time pick up amendments on their own release cadence. An exceptional breaking backport is announced through the breaking-change notice process and enforced at request time by the amended contract; it invalidates earlier copies only because the release was defective as published.
 
-Capabilities outside the `dev.ucp.*` namespace version fully independently. Vendors control their own release schedules and versioning strategy.
+A Business or Platform that selects `ucp.version` `D` **MUST** declare version `D` on every `dev.ucp.*` service, capability, and extension entry in its profile. A Platform that encounters a `dev.ucp.*` entry whose `version` differs from the profile's `ucp.version` **MUST** reject that entry — treated as not present and never activated — and **MAY** continue with the remaining entries. An older release is selected only through a separate `supported_versions` leaf profile whose own `ucp.version` is that older release date (see [Protocol Version](#protocol-version)). Payment-handler versions are controlled by their authors: UCP defines the shared declaration structure but currently no concrete handler, so no handler version is constrained to `D`. Declaring `version` `D` does not change negotiation: `dev.ucp.*` capabilities and extensions are still selected by exact-version intersection (see [Capability Versions](#capability-versions)).
+
+#### Third-party extensions (`com.{vendor}.*`, `org.{org}.*`)
+
+Third-party capabilities version independently of `ucp.version`: their authors control both the version and the release cadence. The common form is an **extension** over one or more UCP-defined root capabilities. A third-party extension:
+
+- declares `extends` over one or more UCP-defined root capabilities, composed via `allOf` (see [Extension Schema Pattern](#extension-schema-pattern));
+- uses the UCP-defined services and transport bindings selected by `ucp.version`; and
+- advertises exact extension versions in Business and Platform profiles and is negotiated by exact-version intersection like every capability.
+
+A third-party extension's version is never tied to `ucp.version`. The author declares the UCP releases and capability versions the extension needs through `requires` (see [Version Requirements](#version-requirements)); those ranges verify compatibility with the versions a profile selects, they do not select versions.
 
 ## Glossary
 

@@ -72,10 +72,10 @@ UCP recognizes two algorithm families: ECDSA (over NIST P-curves) and EdDSA (Ed2
 
 - **Algorithm choice is counterparty-driven.** A signer **SHOULD** use an algorithm accepted by every verifier the same signature must satisfy — the receiving UCP verifier, plus any WBA verifier or AP2 layer it opts that signature into. One key suffices when a single algorithm satisfies all of them; publish multiple keys of different algorithms (selected per-signature by `kid`) only when no single algorithm does.
 - **Default to `ES256`** absent a specific counterparty constraint — it is the universal UCP baseline and also a valid Web Bot Auth algorithm. (WBA's algorithm rules and the current deployment landscape are in [WBA Interop](#wba-interop).)
-- **AP2 mandate signing follows AP2's own algorithm rule** — see [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md).
+- **AP2 mandate signing follows AP2's own algorithm rule** — see [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md).
 - The algorithm is derived from the key's `kty`/`crv` field in the JWK; `alg` is **NOT** included in `Signature-Input` parameters.
 
-**Number of signing keys.** How many keys a party publishes follows from algorithm compatibility, not a UCP rule. One key suffices when a single algorithm is accepted by every audience it signs for; separate keys (selected by `kid`) are needed only when audiences impose incompatible algorithm constraints — for example, a WBA verifier that accepts only Ed25519 together with an AP2 mandate algorithm requirement that excludes it (see [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/index.md)). When one algorithm satisfies every audience, a single key serves all of them. See [Business Profile](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#business-profile) for a two-key example.
+**Number of signing keys.** How many keys a party publishes follows from algorithm compatibility, not a UCP rule. One key suffices when a single algorithm is accepted by every audience it signs for; separate keys (selected by `kid`) are needed only when audiences impose incompatible algorithm constraints — for example, a WBA verifier that accepts only Ed25519 together with an AP2 mandate algorithm requirement that excludes it (see [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md)). When one algorithm satisfies every audience, a single key serves all of them. See [Business Profile](https://sakinaroufid.github.io/pr-test/draft/specification/overview/#business-profile) for a two-key example.
 
 For on-the-wire signature encoding details, see [REST Request Signing — Signature Encoding](#rest-request-signing).
 
@@ -232,7 +232,7 @@ For HTTP REST transport, UCP uses [RFC 9421 (HTTP Message Signatures)](https://w
 - `*` Required when request/response has a body
 - `**` Required when opting into Web Bot Auth-compatible signature shape; absent for default UCP signatures (verifiers fall back to `UCP-Agent`- derived identity).
 
-`Content-Digest` follows [RFC 9530](https://www.rfc-editor.org/rfc/rfc9530) and hashes the raw body bytes. This binds the message body to the signature without requiring JSON canonicalization. Implementations **MUST** use `sha-256`. For durable artifacts requiring canonicalization, see [AP2 Mandates - Canonicalization](https://sakinaroufid.github.io/pr-test/draft/specification/ap2-mandates/#canonicalization).
+`Content-Digest` follows [RFC 9530](https://www.rfc-editor.org/rfc/rfc9530) and hashes the raw body bytes. This binds the message body to the signature without requiring JSON canonicalization. Implementations **MUST** use `sha-256`. For durable artifacts requiring canonicalization, see [AP2 Mandates - Canonicalization](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/#canonicalization).
 
 **Intermediary Warning:** Proxies, API gateways, and other intermediaries **MUST NOT** re-serialize JSON bodies, as this would invalidate the signature. The `Content-Digest` is computed over raw bytes; any modification breaks verification.
 
@@ -352,7 +352,7 @@ Response signatures use `@status` instead of `@method`:
 
 **Complete Response Example:**
 
-The response body below is abbreviated for clarity — only the key fields used in signing are shown. A full checkout response includes additional required fields (`ucp`, `currency`, `line_items`, `totals`, `links`); see [Create Checkout response](https://sakinaroufid.github.io/pr-test/draft/specification/checkout-rest/#create-checkout) for the complete shape.
+The response body below is abbreviated for clarity — only the key fields used in signing are shown. A full checkout response includes additional required fields (`ucp`, `currency`, `line_items`, `totals`, `links`); see [Create Checkout response](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/rest/#create-checkout) for the complete shape.
 
 ```http
 HTTP/1.1 201 Created
@@ -457,7 +457,7 @@ verify_rest_request(request):
     components = sig_input.components
 
     // 2. Resolve signer's public key (capability-based; see
-    // overview.md#identity-resolution-algorithm).
+    // overview/index.md#identity-resolution-algorithm).
     key_set = resolve_signer_key_set(request.headers)
     // sig_capable skips keys not usable for verification: use:"enc", or
     // key_ops present without "verify" (RFC 7517 §4.2, §4.3)
@@ -465,12 +465,12 @@ verify_rest_request(request):
     if not public_key:
         return skip_signature("key_not_found")
 
-   // pre-2a. WBA-shape signatures bind key identity to key bytes:
-   // keyid MUST equal the matched JWK's RFC 7638 thumbprint
-   // (see IRA step 4 / WBA architecture draft §4.2).
-   if sig_input.tag == "web-bot-auth":
-       if keyid != rfc7638_thumbprint(public_key):
-           return skip_signature("signature_invalid")
+    // pre-2a. WBA-shape signatures bind key identity to key bytes:
+    // keyid MUST equal the matched JWK's RFC 7638 thumbprint
+    // (see IRA step 4 / WBA architecture draft §4.2).
+    if sig_input.tag == "web-bot-auth":
+        if keyid != rfc7638_thumbprint(public_key):
+            return skip_signature("signature_invalid")
     // 2a. Skip keys whose algorithm this verifier does not support.
     // The kty/crv/alg vocabularies are open (see Signature Algorithms);
     // an unsupported key never invalidates the whole key set.
