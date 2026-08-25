@@ -108,7 +108,7 @@ Checkout Identity Linking Order
 
 Support complex cart logic, dynamic pricing, tax calculations, and more across millions of businesses through unified checkout sessions.
 
-[Get Started](/latest/specification/checkout/)
+[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/shopping/checkout/index.md)
 
 ```json
 {
@@ -145,6 +145,7 @@ Support complex cart logic, dynamic pricing, tax calculations, and more across m
         "selected_destination_id": "dest_1",
         "destinations": [
           {
+            "type": "shipping_address",
             "id": "dest_1",
             "first_name": "Elisa",
             "last_name": "Beckett",
@@ -179,7 +180,7 @@ Support complex cart logic, dynamic pricing, tax calculations, and more across m
 
 OAuth 2.0 standard enables agents to maintain secure, authorized relationships without sharing credentials.
 
-[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/identity-linking/index.md)
+[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/common/identity-linking/index.md)
 
 ```json
 Sample of /.well-known/oauth-authorization-server
@@ -210,7 +211,7 @@ Sample of /.well-known/oauth-authorization-server
 
 From purchase confirmation to delivery. Real-time webhooks power status updates, shipment tracking, and return processing across every channel.
 
-[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/order/index.md)
+[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/shopping/order/index.md)
 
 ```json
 {
@@ -286,13 +287,13 @@ Detailed specifications coming soon
 
 Integrate and negotiate directly with a seller's checkout API to power native UI and workflows for your platform.
 
-[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/checkout-rest/index.md)
+[Get Started](https://sakinaroufid.github.io/pr-test/latest/specification/shopping/checkout/rest/index.md)
 
 ### Embed business checkout
 
 Embed and render business checkout UI to support complex checkout flows, with advanced capabilities like bidirectional communication, and payment and shipping address delegation.
 
-[See how it works](https://sakinaroufid.github.io/pr-test/latest/specification/embedded-checkout/index.md)
+[See how it works](https://sakinaroufid.github.io/pr-test/latest/specification/shopping/checkout/embedded/index.md)
 
 ## Designed for the entire commerce ecosystem
 
@@ -532,7 +533,7 @@ The complete technical specification, documentation, and reference implementatio
 
 Download and run our code samples
 
-### [Experiment](https://sakinaroufid.github.io/pr-test/latest/specification/playground/index.md)
+### [Experiment](https://sakinaroufid.github.io/pr-test/latest/specification/shopping/playground/index.md)
 
 Experiment with the protocol and its different agent roles
 
