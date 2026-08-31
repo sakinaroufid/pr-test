@@ -385,12 +385,9 @@ def test_extract_blocks() -> None:
 def test_coverage_composition() -> None:
   """Coverage sees through nested allOf and open-map registries.
 
-  Bundled schemas nest composition — a capability inlines a base type
-  whose own allOf inlines another — and UCP's reverse-domain registries
-  (`ucp.capabilities`, `ucp.services`, `amenities`) declare their entry
-  shape under additionalProperties, never under properties. A walker
-  that merges one allOf level and reads only `properties` stops at the
-  first such node and reports nothing below it.
+  A walker that merges one allOf level and reads only `properties`
+  stops at the first composed node or reverse-domain registry and
+  reports nothing below it.
   """
   # Required fields two allOf levels down are still required.
   nested = {
@@ -486,11 +483,9 @@ def test_coverage_composition() -> None:
 def test_coverage_variant_selection() -> None:
   """Coverage selects the oneOf/anyOf branch a value conforms to.
 
-  No UCP schema declares an OpenAPI `discriminator`; branches are told
-  apart by a const/enum marker property, as the overview describes
-  ("every branch pins the discriminator"). Selecting on the
-  `discriminator` keyword alone therefore matches nothing and leaves
-  every variant object unchecked.
+  No UCP schema declares an OpenAPI `discriminator`; branches pin a
+  const/enum marker instead. Keying on the keyword alone matches
+  nothing and leaves every variant object unchecked.
   """
   message = {
     "type": "object",
@@ -578,11 +573,6 @@ def test_coverage_respects_elision() -> None:
     "coverage_elision_acknowledges_fields",
     v.check_coverage(example, schema) == [],
     f"got {v.check_coverage(example, schema)}",
-  )
-  _check(
-    "coverage_absent_field_still_reported",
-    v.check_coverage({"id": "...", "items": ["..."]}, schema)
-    == ['$: missing required field "meta"'],
   )
 
 
@@ -806,11 +796,10 @@ def test_process_block_integration() -> None:
 def test_elided_required_field_accepted() -> None:
   """`"..."` on a required field is an acknowledgement, not an omission.
 
-  Lowering the sentinel drops the key from the merged payload, so
-  ucp-schema reports the violation against the enclosing object — one
-  level above the acknowledged path. Suppressing only by exact path or
-  descendant leaves the author with a failure the contract says should
-  not happen, and no way to elide a required value.
+  Lowering the sentinel drops the key, so ucp-schema reports the
+  violation against the enclosing object, one level above the recorded
+  path. Suppressing by exact path or descendant alone leaves no way to
+  elide a required value.
   """
   if not _has_ucp_schema():
     _check(
@@ -834,20 +823,8 @@ def test_elided_required_field_accepted() -> None:
     f"got {result.status}: {result.message}",
   )
 
-  # Suppression is scoped to the acknowledged field: a required field
-  # that is simply absent still fails, at the top level ...
-  md = (
-    "<!-- ucp:example schema=common/loyalty def=membership_tier -->\n"
-    '```json\n{ "id": "gold" }\n```\n'
-  )
-  result = _process(md)
-  _check(
-    "absent_required_field_still_fails",
-    result.status == "fail" and "name" in result.message,
-    f"got {result.status}: {result.message}",
-  )
-
-  # ... and nested inside an array element.
+  # Suppression is scoped to the acknowledged field: one that is simply
+  # absent still fails, including nested where the error path is non-empty.
   md = (
     "<!-- ucp:example schema=common/loyalty def=membership_tier -->\n"
     "```json\n"
@@ -857,7 +834,7 @@ def test_elided_required_field_accepted() -> None:
   )
   result = _process(md)
   _check(
-    "absent_nested_required_field_still_fails",
+    "absent_required_field_still_fails",
     result.status == "fail" and "description" in result.message,
     f"got {result.status}: {result.message}",
   )

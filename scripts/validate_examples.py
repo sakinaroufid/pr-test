@@ -82,28 +82,18 @@ Layer 3 — Semantic interpretation. Operates on the parsed tree:
     fills required gaps.
   - Coverage walk: for each object in the example, verify every
     schema-required field is either present or elision-acknowledged.
-    The walk reads a bundled schema the way the validator does:
-      * `allOf` composes recursively, so a required field or property
-        contributed several branches deep still applies.
-      * `additionalProperties` describes the members of an open map,
-        which is how every reverse-domain registry (`ucp.services`,
-        `ucp.capabilities`, `ucp.payment_handlers`, `amenities`)
-        states its entry shape.
-      * A `oneOf`/`anyOf` node is narrowed to the branch the value
-        conforms to, selected by the `const`/`enum` marker property
-        each branch pins (UCP schemas do not declare an OpenAPI
-        `discriminator`), or by a declared discriminator where one
-        exists. An ambiguous value is checked against the enclosing
-        schema alone.
-      * `$ref: "#"` is a bundling recursion marker and is not
-        followed; it resolves against the sub-schema's own root
-        rather than the bundle root.
+    Composition is read as the validator reads it: `allOf` composes
+    recursively; `additionalProperties` gives the member shape of an
+    open map; a `oneOf`/`anyOf` node narrows to the branch matching
+    the value's `const`/`enum` marker, or to the enclosing schema
+    alone when ambiguous. `$ref: "#"` is a bundling recursion marker
+    and is not followed.
   - The merged payload is validated by `ucp-schema validate`.
   - Validation errors whose path is an elided path (or descendant)
-    are suppressed. A missing-required-property error is reported
-    against the enclosing object, so it is also suppressed when the
-    property it names is itself an elided path — that is what makes
-    `"field": "..."` work on a required field.
+    are suppressed, as is a missing-required-property error naming an
+    elided property: it is reported against the enclosing object, one
+    level above the recorded path. That is what makes `"field": "..."`
+    work on a required field.
 
 ================================================================
 KNOWN LIMITATIONS
@@ -115,9 +105,9 @@ KNOWN LIMITATIONS
     example currently triggers this.
   - The literal three-character string "..." cannot appear in an
     example as actual data — it is reserved as the elision sentinel.
-  - Coverage reads composition, not full JSON Schema semantics:
-    `if`/`then`, `not`, `patternProperties`, and `propertyNames`
-    carry no required fields and are left to `ucp-schema validate`.
+  - Coverage reads composition, not full JSON Schema semantics.
+    `if`/`then`, `not`, `patternProperties` and `propertyNames` are
+    left to `ucp-schema validate`.
 
 ================================================================
 CLI
@@ -558,30 +548,22 @@ def deep_merge(scaffold: dict, example: dict) -> dict:
 # -----------------------------------------------------------
 
 
-# Stand-in for a JSON value that cannot be compared by set membership
-# (an object or array marker value). It equals nothing, including itself
-# by value, so such a value never matches and never pins a branch.
+# Stand-in for a marker value that set membership cannot compare (an
+# object or array). It matches nothing, so it never pins a branch.
 _UNMATCHABLE = object()
 
 
 def _compose(schema: dict, _seen=None) -> tuple[set[str], dict, dict | None]:
   """Flatten one schema node into (required, properties, members).
 
-  `allOf` is walked recursively. Bundled UCP schemas nest composition
-  several levels deep — a capability inlines a base type whose own
-  `allOf` inlines another — so a single-level merge loses every
-  required field and property below the first branch.
+  `allOf` is walked recursively: bundled schemas nest composition
+  several levels deep, and a single-level merge loses everything below
+  the first branch. `members` is the `additionalProperties` sub-schema
+  when the node is an open map, which is how the reverse-domain
+  registries state their entry shape; a boolean yields None.
 
-  `members` is the `additionalProperties` sub-schema when the node
-  models an open map: the reverse-domain registries (`ucp.services`,
-  `ucp.capabilities`, `ucp.payment_handlers`, `amenities`) declare no
-  `properties` at all and describe their entries there. Boolean
-  `additionalProperties` carries no member shape and yields None.
-
-  `$ref: "#"` marks a recursive schema and is deliberately not
-  followed: bundling rewrites it against the sub-schema's own root,
-  not the bundle root, so resolving it here would check members
-  against the wrong shape.
+  `$ref: "#"` is not followed. Bundling rewrites it against the
+  sub-schema's own root, so resolving it here checks the wrong shape.
   """
   required: set[str] = set()
   props: dict = {}
@@ -615,7 +597,7 @@ def _get_property_schema(schema: dict, key: str) -> dict | None:
   """Get schema for a property, resolving allOf.
 
   Falls back to the open-map member schema so registry entries keyed
-  by reverse-domain name resolve to the shape their entries must take.
+  by reverse-domain name resolve to their entry shape.
   """
   _, props, members = _compose(schema)
   return props.get(key, members)
@@ -644,19 +626,15 @@ def _marker_values(prop_schema) -> set:
 def _select_branch(schema: dict, value) -> dict | None:
   """Select the oneOf/anyOf branch that `value` conforms to.
 
-  UCP schemas never declare an OpenAPI `discriminator`. As the
-  overview puts it, branches are told apart because "every branch
-  pins the discriminator" through `const` (or `enum`) on a marker
-  property — `message.json` is a `oneOf` over error/warning/info, and
-  a credential `anyOf` pins `type` per family. A walker that only
-  understands the `discriminator` keyword therefore selects nothing
-  and skips every variant object in the corpus.
+  UCP schemas never declare an OpenAPI `discriminator`; as the
+  overview puts it, "every branch pins the discriminator" through
+  `const` or `enum` on a marker property. Keying on the keyword alone
+  matches nothing and leaves every variant object unchecked.
 
   A branch is disqualified when the value contradicts one of its
-  markers. Among the rest the best match wins: most markers agreed,
-  then most declared properties present. Returns None when no branch
-  is uniquely best — the ambiguous case, where checking only what the
-  enclosing schema states is the conservative reading.
+  markers; among the rest the best match wins (markers agreed, then
+  declared properties present). None when no branch is uniquely best,
+  so an ambiguous value is checked against the enclosing schema only.
   """
   branches = schema.get("oneOf") or schema.get("anyOf") or []
   if not branches or not isinstance(value, dict):
@@ -720,8 +698,7 @@ def check_coverage(example, schema: dict, path: str = "$") -> list[str]:
   # Object coverage
   if isinstance(example, dict):
     required, props, members = _compose(schema)
-    # A variant node states its shape in the matching branch, so the
-    # branch is folded in before anything is checked.
+    # A variant states its shape in the matching branch.
     branch = _select_branch(schema, example)
     if branch is not None:
       branch_required, branch_props, branch_members = _compose(branch)
@@ -1201,11 +1178,9 @@ def process_block(
     err_path = ve.get("path", "")
     if _is_elided(err_path, ellipsis_paths):
       continue
-    # A missing required property is reported against the enclosing
-    # object, not the property. Eliding a required field's value with
-    # "..." removes the key from the merged payload, so the violation
-    # lands one level above every acknowledged path — suppress it when
-    # the property the message names is the elided one.
+    # "..." on a required field drops the key, and the resulting
+    # violation is reported against the enclosing object, one level
+    # above the recorded path. Suppress when it names an elided field.
     missing = _REQUIRED_PROPERTY_RE.match(ve.get("message", ""))
     if missing and _is_elided(f"{err_path}/{missing.group(1)}", ellipsis_paths):
       continue
