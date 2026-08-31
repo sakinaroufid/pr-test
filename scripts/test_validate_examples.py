@@ -378,6 +378,215 @@ def test_extract_blocks() -> None:
 
 
 # -----------------------------------------------------------
+# Layer 3: the coverage walker
+# -----------------------------------------------------------
+
+
+def test_coverage_composition() -> None:
+  """Coverage sees through nested allOf and open-map registries.
+
+  Bundled schemas nest composition — a capability inlines a base type
+  whose own allOf inlines another — and UCP's reverse-domain registries
+  (`ucp.capabilities`, `ucp.services`, `amenities`) declare their entry
+  shape under additionalProperties, never under properties. A walker
+  that merges one allOf level and reads only `properties` stops at the
+  first such node and reports nothing below it.
+  """
+  # Required fields two allOf levels down are still required.
+  nested = {
+    "allOf": [
+      {"allOf": [{"type": "object", "required": ["id"]}]},
+      {"properties": {"name": {"type": "string"}}},
+    ]
+  }
+  _check(
+    "coverage_nested_allof_required",
+    v.check_coverage({"name": "x"}, nested)
+    == ['$: missing required field "id"'],
+    f"got {v.check_coverage({'name': 'x'}, nested)}",
+  )
+
+  # Properties two allOf levels down are still walked into.
+  deep_props = {
+    "allOf": [
+      {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {"inner": {"type": "object", "required": ["needed"]}},
+          }
+        ]
+      }
+    ]
+  }
+  _check(
+    "coverage_nested_allof_properties",
+    v.check_coverage({"inner": {}}, deep_props)
+    == ['$.inner: missing required field "needed"'],
+    f"got {v.check_coverage({'inner': {}}, deep_props)}",
+  )
+
+  # An open map checks every member against additionalProperties.
+  registry = {
+    "type": "object",
+    "additionalProperties": {
+      "type": "array",
+      "items": {"type": "object", "required": ["version"]},
+    },
+  }
+  _check(
+    "coverage_open_map_members",
+    v.check_coverage({"dev.ucp.shopping.checkout": [{}]}, registry)
+    == ['$.dev.ucp.shopping.checkout[0]: missing required field "version"'],
+    f"got {v.check_coverage({'dev.ucp.shopping.checkout': [{}]}, registry)}",
+  )
+
+  # A declared property still wins over the open-map fallback.
+  mixed = {
+    "type": "object",
+    "properties": {"known": {"type": "object", "required": ["a"]}},
+    "additionalProperties": {"type": "object", "required": ["b"]},
+  }
+  _check(
+    "coverage_declared_property_wins",
+    v.check_coverage({"known": {}, "other": {}}, mixed)
+    == [
+      '$.known: missing required field "a"',
+      '$.other: missing required field "b"',
+    ],
+    f"got {v.check_coverage({'known': {}, 'other': {}}, mixed)}",
+  )
+
+  # additionalProperties: true carries no member shape — nothing to check.
+  _check(
+    "coverage_open_object_no_member_shape",
+    v.check_coverage(
+      {"com.example.custom": {}},
+      {"type": "object", "additionalProperties": True},
+    )
+    == [],
+  )
+
+  # items reached through allOf composition.
+  composed_items = {"allOf": [{"type": "array", "items": {"required": ["id"]}}]}
+  _check(
+    "coverage_items_through_allof",
+    v.check_coverage([{}], composed_items)
+    == ['$[0]: missing required field "id"'],
+    f"got {v.check_coverage([{}], composed_items)}",
+  )
+
+  # $ref: "#" is a bundling recursion marker, not a pointer to follow.
+  _check(
+    "coverage_self_ref_not_followed",
+    v.check_coverage({"anything": 1}, {"$ref": "#", "required": ["id"]}) == [],
+  )
+
+
+def test_coverage_variant_selection() -> None:
+  """Coverage selects the oneOf/anyOf branch a value conforms to.
+
+  No UCP schema declares an OpenAPI `discriminator`; branches are told
+  apart by a const/enum marker property, as the overview describes
+  ("every branch pins the discriminator"). Selecting on the
+  `discriminator` keyword alone therefore matches nothing and leaves
+  every variant object unchecked.
+  """
+  message = {
+    "type": "object",
+    "oneOf": [
+      {
+        "type": "object",
+        "required": ["severity", "code", "content"],
+        "properties": {"severity": {"const": "error"}},
+      },
+      {
+        "type": "object",
+        "required": ["severity", "content"],
+        "properties": {"severity": {"const": "info"}},
+      },
+    ],
+  }
+  _check(
+    "coverage_marker_selects_branch",
+    v.check_coverage({"severity": "error", "content": "x"}, message)
+    == ['$: missing required field "code"'],
+    f"got {v.check_coverage({'severity': 'error', 'content': 'x'}, message)}",
+  )
+  # The other branch's extra requirement must not leak across.
+  _check(
+    "coverage_other_branch_not_applied",
+    v.check_coverage({"severity": "info", "content": "x"}, message) == [],
+    f"got {v.check_coverage({'severity': 'info', 'content': 'x'}, message)}",
+  )
+  # enum pins a branch just as const does.
+  enum_variant = {
+    "anyOf": [
+      {
+        "required": ["cvc"],
+        "properties": {"type": {"enum": ["pan", "pan_legacy"]}},
+      },
+      {"required": ["eci_value"], "properties": {"type": {"const": "token"}}},
+    ]
+  }
+  _check(
+    "coverage_enum_marker_selects_branch",
+    v.check_coverage({"type": "pan"}, enum_variant)
+    == ['$: missing required field "cvc"'],
+    f"got {v.check_coverage({'type': 'pan'}, enum_variant)}",
+  )
+  # Nothing pins the value: the ambiguous case checks only the enclosing
+  # schema rather than guessing a branch.
+  ambiguous = {
+    "type": "object",
+    "required": ["kind"],
+    "oneOf": [{"required": ["a"]}, {"required": ["b"]}],
+  }
+  _check(
+    "coverage_ambiguous_variant_falls_back",
+    v.check_coverage({"kind": "x"}, ambiguous) == [],
+    f"got {v.check_coverage({'kind': 'x'}, ambiguous)}",
+  )
+  # A declared discriminator, where one exists, still selects.
+  declared = {
+    "discriminator": {"propertyName": "kind"},
+    "oneOf": [
+      {"properties": {"kind": {"const": "a"}}, "required": ["only_a"]},
+      {"properties": {"kind": {"const": "b"}}, "required": ["only_b"]},
+    ],
+  }
+  _check(
+    "coverage_declared_discriminator_selects",
+    v.check_coverage({"kind": "b"}, declared)
+    == ['$: missing required field "only_b"'],
+    f"got {v.check_coverage({'kind': 'b'}, declared)}",
+  )
+
+
+def test_coverage_respects_elision() -> None:
+  """Elision markers acknowledge a field; coverage accepts them."""
+  schema = {
+    "type": "object",
+    "required": ["id", "items", "meta"],
+    "properties": {
+      "items": {"type": "array", "items": {"required": ["sku"]}},
+      "meta": {"type": "object", "required": ["deep"]},
+    },
+  }
+  example = {"id": "...", "items": ["..."], "meta": {"...": "..."}}
+  _check(
+    "coverage_elision_acknowledges_fields",
+    v.check_coverage(example, schema) == [],
+    f"got {v.check_coverage(example, schema)}",
+  )
+  _check(
+    "coverage_absent_field_still_reported",
+    v.check_coverage({"id": "...", "items": ["..."]}, schema)
+    == ['$: missing required field "meta"'],
+  )
+
+
+# -----------------------------------------------------------
 # process_block: integration tests requiring ucp-schema
 # -----------------------------------------------------------
 
@@ -594,6 +803,66 @@ def test_process_block_integration() -> None:
   )
 
 
+def test_elided_required_field_accepted() -> None:
+  """`"..."` on a required field is an acknowledgement, not an omission.
+
+  Lowering the sentinel drops the key from the merged payload, so
+  ucp-schema reports the violation against the enclosing object — one
+  level above the acknowledged path. Suppressing only by exact path or
+  descendant leaves the author with a failure the contract says should
+  not happen, and no way to elide a required value.
+  """
+  if not _has_ucp_schema():
+    _check(
+      "elided_required_field_accepted",
+      False,
+      "SKIPPED: ucp-schema binary not on PATH",
+    )
+    return
+
+  md = (
+    "<!-- ucp:example schema=common/loyalty def=membership_tier -->\n"
+    "```json\n"
+    '{ "id": "gold", "name": "...",\n'
+    '  "benefits": [ { "id": "free_shipping", "description": "..." } ] }\n'
+    "```\n"
+  )
+  result = _process(md)
+  _check(
+    "elided_required_field_accepted",
+    result.status == "ok",
+    f"got {result.status}: {result.message}",
+  )
+
+  # Suppression is scoped to the acknowledged field: a required field
+  # that is simply absent still fails, at the top level ...
+  md = (
+    "<!-- ucp:example schema=common/loyalty def=membership_tier -->\n"
+    '```json\n{ "id": "gold" }\n```\n'
+  )
+  result = _process(md)
+  _check(
+    "absent_required_field_still_fails",
+    result.status == "fail" and "name" in result.message,
+    f"got {result.status}: {result.message}",
+  )
+
+  # ... and nested inside an array element.
+  md = (
+    "<!-- ucp:example schema=common/loyalty def=membership_tier -->\n"
+    "```json\n"
+    '{ "id": "gold", "name": "...",\n'
+    '  "benefits": [ { "id": "free_shipping" } ] }\n'
+    "```\n"
+  )
+  result = _process(md)
+  _check(
+    "absent_nested_required_field_still_fails",
+    result.status == "fail" and "description" in result.message,
+    f"got {result.status}: {result.message}",
+  )
+
+
 def test_resolve_schema_cache_key() -> None:
   """Resolved schemas are cached per schema root as well as schema identity."""
   original_run = v.subprocess.run
@@ -641,8 +910,12 @@ def main() -> int:
   test_array_ellipsis_paths_use_stripped_indices()
   test_annotation_parsing()
   test_extract_blocks()
+  test_coverage_composition()
+  test_coverage_variant_selection()
+  test_coverage_respects_elision()
   test_scaffold_resolution()
   test_resolve_schema_cache_key()
+  test_elided_required_field_accepted()
   test_process_block_integration()
   return _report()
 

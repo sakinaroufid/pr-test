@@ -788,7 +788,10 @@ checkout scaffold, and validates the merged checkout.
 
 The validator understands shapes that mean **"this required field is present;
 its value is not asserted."** Coverage check still verifies the field is
-acknowledged. Schema validation errors at the elided sub-tree are suppressed.
+acknowledged. Schema validation errors at the elided sub-tree are suppressed,
+including the enclosing object's "required property" error — eliding a
+required field's value with `"..."` is exactly what these markers are for,
+so it does not have to be given a made-up value to satisfy the schema.
 
 | Shape                | Meaning                                                |
 | -------------------- | ------------------------------------------------------ |
@@ -860,6 +863,17 @@ Avoid vague reasons like `"conceptual example"`. The taxonomy is how we
 prioritize what to validate next.
 
 ### Common patterns
+
+**Coverage reads composed schemas.** The required-field check follows a
+schema the way the validator does: `allOf` composes recursively, an open map
+declares its entry shape under `additionalProperties` (this is how the
+reverse-domain registries — `ucp.services`, `ucp.capabilities`,
+`ucp.payment_handlers`, `amenities` — describe their entries), and a
+`oneOf`/`anyOf` node narrows to the branch the value conforms to, picked by
+the `const`/`enum` marker each branch pins on its discriminator property. So
+an entry in a capability registry, a `messages[]` variant, and a payment
+credential family are all checked for their own required fields — write them
+complete, or acknowledge what you leave out with an elision marker.
 
 **Full request or response.** The default case. The example is a complete
 payload for the named operation.
