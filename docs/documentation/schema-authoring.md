@@ -788,7 +788,9 @@ checkout scaffold, and validates the merged checkout.
 
 The validator understands shapes that mean **"this required field is present;
 its value is not asserted."** Coverage check still verifies the field is
-acknowledged. Schema validation errors at the elided sub-tree are suppressed.
+acknowledged. Schema validation errors at the elided sub-tree are suppressed,
+including the enclosing object's "required property" error, so `"..."` works
+on a required field without inventing a value for it.
 
 | Shape                | Meaning                                                |
 | -------------------- | ------------------------------------------------------ |
@@ -860,6 +862,10 @@ Avoid vague reasons like `"conceptual example"`. The taxonomy is how we
 prioritize what to validate next.
 
 ### Common patterns
+
+Coverage follows composition, open maps and variant branches, so a registry
+entry, a `messages[]` variant and a credential family are each checked for
+their own required fields. Write them complete or elide what you leave out.
 
 **Full request or response.** The default case. The example is a complete
 payload for the named operation.

@@ -82,9 +82,18 @@ Layer 3 — Semantic interpretation. Operates on the parsed tree:
     fills required gaps.
   - Coverage walk: for each object in the example, verify every
     schema-required field is either present or elision-acknowledged.
+    Composition is read as the validator reads it: `allOf` composes
+    recursively; `additionalProperties` gives the member shape of an
+    open map; a `oneOf`/`anyOf` node narrows to the branch matching
+    the value's `const`/`enum` marker, or to the enclosing schema
+    alone when ambiguous. `$ref: "#"` is a bundling recursion marker
+    and is not followed.
   - The merged payload is validated by `ucp-schema validate`.
   - Validation errors whose path is an elided path (or descendant)
-    are suppressed.
+    are suppressed, as is a missing-required-property error naming an
+    elided property: it is reported against the enclosing object, one
+    level above the recorded path. That is what makes `"field": "..."`
+    work on a required field.
 
 ================================================================
 KNOWN LIMITATIONS
@@ -96,6 +105,9 @@ KNOWN LIMITATIONS
     example currently triggers this.
   - The literal three-character string "..." cannot appear in an
     example as actual data — it is reserved as the elision sentinel.
+  - Coverage reads composition, not full JSON Schema semantics.
+    `if`/`then`, `not`, `patternProperties` and `propertyNames` are
+    left to `ucp-schema validate`.
 
 ================================================================
 CLI
@@ -420,6 +432,19 @@ def strip_ellipsis(obj, _path="", _paths=None):
   return obj if _path else (obj, _paths)
 
 
+def _is_elided(path: str, ellipsis_paths: set[str]) -> bool:
+  """Report whether a pointer is at, or below, an acknowledged elision."""
+  return any(
+    path == elided or path.startswith(elided + "/") for elided in ellipsis_paths
+  )
+
+
+# `ucp-schema` reports an absent required field against the enclosing
+# object and names the field in the message; there is no structured
+# keyword in its JSON output to key off instead.
+_REQUIRED_PROPERTY_RE = re.compile(r'^"(.+)" is a required property$')
+
+
 # -----------------------------------------------------------
 # JSONPath navigation (minimal subset)
 # -----------------------------------------------------------
@@ -523,67 +548,175 @@ def deep_merge(scaffold: dict, example: dict) -> dict:
 # -----------------------------------------------------------
 
 
-def _collect_required(schema: dict) -> set[str]:
-  """Collect required fields, merging allOf branches."""
-  required = set(schema.get("required", []))
-  for branch in schema.get("allOf", []):
-    required |= set(branch.get("required", []))
-  return required
+# Stand-in for a marker value that set membership cannot compare (an
+# object or array). It matches nothing, so it never pins a branch.
+_UNMATCHABLE = object()
 
 
-def _collect_properties(schema: dict) -> dict:
-  """Collect properties, merging allOf branches."""
-  props = dict(schema.get("properties", {}))
+def _compose(schema: dict, _seen=None) -> tuple[set[str], dict, dict | None]:
+  """Flatten one schema node into (required, properties, members).
+
+  `allOf` is walked recursively: bundled schemas nest composition
+  several levels deep, and a single-level merge loses everything below
+  the first branch. `members` is the `additionalProperties` sub-schema
+  when the node is an open map, which is how the reverse-domain
+  registries state their entry shape; a boolean yields None.
+
+  `$ref: "#"` is not followed. Bundling rewrites it against the
+  sub-schema's own root, so resolving it here checks the wrong shape.
+  """
+  required: set[str] = set()
+  props: dict = {}
+  members: dict | None = None
+  if not isinstance(schema, dict) or schema.get("$ref") == "#":
+    return required, props, members
+  # Composition can be cyclic through a recursive $defs entry; a node
+  # contributes once.
+  if _seen is None:
+    _seen = set()
+  if id(schema) in _seen:
+    return required, props, members
+  _seen.add(id(schema))
+
+  required |= set(schema.get("required", []))
+  props.update(schema.get("properties", {}))
+  additional = schema.get("additionalProperties")
+  if isinstance(additional, dict) and additional:
+    members = additional
+
   for branch in schema.get("allOf", []):
-    props.update(branch.get("properties", {}))
-  return props
+    branch_required, branch_props, branch_members = _compose(branch, _seen)
+    required |= branch_required
+    props.update(branch_props)
+    if members is None:
+      members = branch_members
+  return required, props, members
 
 
 def _get_property_schema(schema: dict, key: str) -> dict | None:
-  """Get schema for a property, resolving allOf."""
-  props = _collect_properties(schema)
-  return props.get(key)
+  """Get schema for a property, resolving allOf.
+
+  Falls back to the open-map member schema so registry entries keyed
+  by reverse-domain name resolve to their entry shape.
+  """
+  _, props, members = _compose(schema)
+  return props.get(key, members)
 
 
-def _resolve_discriminator(schema: dict, value) -> dict:
-  """Select matching oneOf branch via discriminator."""
-  if not isinstance(value, dict):
-    return schema
-  disc = schema.get("discriminator", {})
-  disc_key = disc.get("propertyName")
-  if not disc_key or disc_key not in value:
-    return schema
-  disc_val = value[disc_key]
-  for branch in schema.get("oneOf", []):
-    branch_props = _collect_properties(branch)
-    const = branch_props.get(disc_key, {}).get("const")
-    if const == disc_val:
-      return branch
-  return schema
+def _hashable(value):
+  """Reduce a JSON value to something set membership accepts."""
+  scalar = (str, int, float, bool, type(None))
+  return value if isinstance(value, scalar) else _UNMATCHABLE
+
+
+def _marker_values(prop_schema) -> set:
+  """Collect the values a property is pinned to by const/enum."""
+  values: set = set()
+  if not isinstance(prop_schema, dict):
+    return values
+  if "const" in prop_schema:
+    values.add(_hashable(prop_schema["const"]))
+  for value in prop_schema.get("enum") or []:
+    values.add(_hashable(value))
+  for branch in prop_schema.get("allOf", []):
+    values |= _marker_values(branch)
+  return values - {_UNMATCHABLE}
+
+
+def _select_branch(schema: dict, value) -> dict | None:
+  """Select the oneOf/anyOf branch that `value` conforms to.
+
+  UCP schemas never declare an OpenAPI `discriminator`; as the
+  overview puts it, "every branch pins the discriminator" through
+  `const` or `enum` on a marker property. Keying on the keyword alone
+  matches nothing and leaves every variant object unchecked.
+
+  A branch is disqualified when the value contradicts one of its
+  markers; among the rest the best match wins (markers agreed, then
+  declared properties present). None when no branch is uniquely best,
+  so an ambiguous value is checked against the enclosing schema only.
+  """
+  branches = schema.get("oneOf") or schema.get("anyOf") or []
+  if not branches or not isinstance(value, dict):
+    return None
+
+  # An explicit discriminator, where one is declared, is authoritative.
+  disc_key = schema.get("discriminator", {}).get("propertyName")
+  if disc_key and disc_key in value:
+    for branch in branches:
+      _, branch_props, _ = _compose(branch)
+      if value[disc_key] in _marker_values(branch_props.get(disc_key)):
+        return branch
+
+  scored: list[tuple[tuple[int, int], dict]] = []
+  for branch in branches:
+    _, branch_props, _ = _compose(branch)
+    markers = 0
+    contradicted = False
+    for key, sub_schema in branch_props.items():
+      pinned = _marker_values(sub_schema)
+      if not pinned or key not in value:
+        continue
+      if _hashable(value[key]) in pinned:
+        markers += 1
+      else:
+        contradicted = True
+        break
+    if contradicted:
+      continue
+    overlap = len(set(branch_props) & set(value))
+    scored.append(((markers, overlap), branch))
+
+  if not scored:
+    return None
+  best = max(score for score, _ in scored)
+  winners = [branch for score, branch in scored if score == best]
+  return winners[0] if len(winners) == 1 else None
+
+
+def _items_schema(schema: dict) -> dict | None:
+  """Find the array item schema, looking through allOf composition."""
+  if not isinstance(schema, dict) or schema.get("$ref") == "#":
+    return None
+  items = schema.get("items")
+  if isinstance(items, dict):
+    return items
+  for branch in schema.get("allOf", []):
+    found = _items_schema(branch)
+    if found is not None:
+      return found
+  return None
 
 
 def check_coverage(example, schema: dict, path: str = "$") -> list[str]:
   """Verify required fields are present or elided."""
   errors: list[str] = []
 
-  # Guard: skip self-references
-  if "$ref" in schema and schema["$ref"] == "#":
+  if not isinstance(schema, dict) or schema.get("$ref") == "#":
     return errors
 
   # Object coverage
   if isinstance(example, dict):
-    obj_type = schema.get("type")
-    # Schemas without explicit "type" but with
-    # "properties" or "allOf" are still objects.
+    required, props, members = _compose(schema)
+    # A variant states its shape in the matching branch.
+    branch = _select_branch(schema, example)
+    if branch is not None:
+      branch_required, branch_props, branch_members = _compose(branch)
+      required |= branch_required
+      props.update(branch_props)
+      if members is None:
+        members = branch_members
+
+    # Schemas without explicit "type" but with required fields,
+    # properties, or an open-map member schema are still objects.
     has_object_shape = (
-      obj_type == "object"
-      or "properties" in schema
-      or any("properties" in b for b in schema.get("allOf", []))
+      schema.get("type") == "object"
+      or bool(required)
+      or bool(props)
+      or members is not None
     )
     if has_object_shape:
-      required = _collect_required(schema)
-      present = set(example.keys())
-      missing = required - present
+      missing = required - set(example.keys())
       for field in sorted(missing):
         errors.append(f'{path}: missing required field "{field}"')
 
@@ -591,12 +724,9 @@ def check_coverage(example, schema: dict, path: str = "$") -> list[str]:
       for key, value in example.items():
         if _is_ellipsis(value):
           continue
-        prop_schema = _get_property_schema(schema, key)
+        prop_schema = props.get(key, members)
         if prop_schema is None:
           continue
-        # Handle oneOf with discriminator
-        if "oneOf" in prop_schema:
-          prop_schema = _resolve_discriminator(prop_schema, value)
         errors += check_coverage(
           value,
           prop_schema,
@@ -605,22 +735,15 @@ def check_coverage(example, schema: dict, path: str = "$") -> list[str]:
 
   # Array coverage: check each real element
   elif isinstance(example, list):
-    items_schema = schema.get("items", {})
-    # Also check allOf for items
-    for branch in schema.get("allOf", []):
-      if "items" in branch:
-        items_schema = branch["items"]
-        break
+    items_schema = _items_schema(schema)
+    if items_schema is None:
+      return errors
     for i, item in enumerate(example):
       if _is_ellipsis(item):
         continue
-      item_schema = items_schema
-      # Handle oneOf discriminator on items
-      if "oneOf" in item_schema:
-        item_schema = _resolve_discriminator(item_schema, item)
       errors += check_coverage(
         item,
-        item_schema,
+        items_schema,
         f"{path}[{i}]",
       )
 
@@ -1053,9 +1176,13 @@ def process_block(
   for ve in val_errors:
     # Suppress errors at ellipsis-acknowledged paths
     err_path = ve.get("path", "")
-    if any(
-      err_path == ep or err_path.startswith(ep + "/") for ep in ellipsis_paths
-    ):
+    if _is_elided(err_path, ellipsis_paths):
+      continue
+    # "..." on a required field drops the key, and the resulting
+    # violation is reported against the enclosing object, one level
+    # above the recorded path. Suppress when it names an elided field.
+    missing = _REQUIRED_PROPERTY_RE.match(ve.get("message", ""))
+    if missing and _is_elided(f"{err_path}/{missing.group(1)}", ellipsis_paths):
       continue
     messages.append(f"validation: {err_path} \u2014 {ve.get('message', '')}")
 
