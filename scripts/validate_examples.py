@@ -425,9 +425,17 @@ def strip_ellipsis(obj, _path="", _paths=None):
     # wrong element (or suppress a real error on a shifted sibling).
     items = []
     for item in obj:
+      child_path = f"{_path}/{len(items)}"
       if item == "...":
         continue
-      items.append(strip_ellipsis(item, f"{_path}/{len(items)}", _paths))
+      elif isinstance(item, list) and item == ["..."]:
+        _paths.add(child_path)
+        items.append([])
+      elif isinstance(item, dict) and item == {"...": "..."}:
+        _paths.add(child_path)
+        items.append({})
+      else:
+        items.append(strip_ellipsis(item, child_path, _paths))
     return items if _path else (items, _paths)
   return obj if _path else (obj, _paths)
 

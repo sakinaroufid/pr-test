@@ -232,6 +232,28 @@ def test_array_ellipsis_paths_use_stripped_indices() -> None:
   )
 
 
+def test_container_ellipsis_as_array_item() -> None:
+  """`[{...}, { ... }]` and `[[ ... ]]` elide the item itself.
+
+  A container sentinel inside an array means the same thing it means as
+  an object field: that position holds a non-empty container whose
+  contents are not shown. The item's own path is recorded, so validation
+  errors against the emptied placeholder are suppressed.
+  """
+  tree = {"items": [{"id": "a"}, {"...": "..."}], "grid": [["..."]]}
+  cleaned, paths = v.strip_ellipsis(tree)
+  _check(
+    "container_ellipsis_item_kept_as_empty",
+    cleaned == {"items": [{"id": "a"}, {}], "grid": [[]]},
+    f"got {cleaned!r}",
+  )
+  _check(
+    "container_ellipsis_item_records_item_path",
+    paths == {"/items/1", "/grid/0"},
+    f"got {paths!r}",
+  )
+
+
 # -----------------------------------------------------------
 # Annotation parsing
 # -----------------------------------------------------------
@@ -705,6 +727,7 @@ def main() -> int:
   test_strip_ellipsis_records_paths()
   test_string_ellipsis_in_array()
   test_array_ellipsis_paths_use_stripped_indices()
+  test_container_ellipsis_as_array_item()
   test_annotation_parsing()
   test_extract_blocks()
   test_reads_are_utf8()
