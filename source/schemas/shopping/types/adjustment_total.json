@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ucp.dev/schemas/shopping/types/adjustment_total.json",
+  "title": "Adjustment Total",
+  "description": "A signed cost breakdown entry on an adjustment. Unlike a receipt Total, the amount is a delta against the order: negative for money returned to the buyer (refunds, credits), positive for additional charges (exchanges), in every category. A refunded `subtotal`, `fulfillment`, or `tax` is negative; a clawed-back `discount` is positive.",
+  "type": "object",
+  "required": [
+    "type",
+    "amount"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "Cost category. Well-known values: subtotal, items_discount, discount, fulfillment, tax, fee, total. Businesses MAY use additional values.",
+      "ucp_request": "omit"
+    },
+    "display_text": {
+      "type": "string",
+      "description": "Text to display against the amount (e.g., 'Shipping refund').",
+      "ucp_request": "omit"
+    },
+    "amount": {
+      "$ref": "../../common/types/signed_amount.json",
+      "ucp_request": "omit"
+    }
+  }
+}

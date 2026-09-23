@@ -285,7 +285,9 @@ Examples: `refund`, `return`, `credit`, `price_adjustment`, `dispute`,
       "status": "completed",
       "line_items": [{ "id": "li_shoes", "quantity": -1 }],
       "totals": [
-        { "type": "total", "amount": -3000 }
+        { "type": "subtotal", "amount": -3000 },
+        { "type": "tax", "amount": -264 },
+        { "type": "total", "amount": -3264 }
       ],
       "description": "Defective item"
     }
