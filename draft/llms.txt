@@ -30,6 +30,7 @@ specifications:
 ## Specification
 
 - [Overview](https://sakinaroufid.github.io/pr-test/draft/specification/overview/index.md): Master technical specification of UCP, discovery mechanisms, secure transports, capability negotiation, and error taxonomies.
+- [Getting Started](https://sakinaroufid.github.io/pr-test/draft/specification/getting-started/index.md): Step-by-step developer guide for building a UCP checkout server in Python (FastAPI) or Node.js (Express).
 - [Glossary](https://sakinaroufid.github.io/pr-test/draft/specification/glossary/index.md): Definitions of the protocol, commerce, payment, regulatory, and standards terms and acronyms used throughout the specification, including Capability, Extension, Action, Platform, Business, and Merchant of Record.
 
 ## Common
@@ -55,7 +56,7 @@ specifications:
 - [REST](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/rest/index.md): HTTP REST transport binding for Checkout operations, specifying standard headers, API endpoints, status codes, and payload structures.
 - [MCP](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/mcp/index.md): Model Context Protocol (MCP) transport binding for Checkout operations, mapping UCP capabilities to JSON-RPC tools with agent metadata rules.
 - [A2A](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/a2a/index.md): Agent2Agent Protocol (A2A) binding for Checkout Capability, detailing transport discovery, agent card profile advertisement, and message negotiation flows.
-- [Embedded protocol](https://sakinaroufid.github.io/pr-test/draft/specification/embedded-protocol/index.md): Core Embedded Protocol (EP) transport binding, defining message formats, handshake patterns, communication channels, security constraints, and shared error handling structures for iframe/webview integrations.
+- [Embedded Protocol](https://sakinaroufid.github.io/pr-test/draft/specification/embedded-protocol/index.md): Core Embedded Protocol (EP) transport binding, defining message formats, handshake patterns, communication channels, security constraints, and shared error handling structures for iframe/webview integrations.
 - [Embedded](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/embedded/index.md): Embedded Checkout Protocol (ECP) specification, detailing per-session delegation negotiation, URL parameters, native UI event mappings, W3C Payment Request conceptual alignment, and core lifecycle messages.
 
 ## Cart Capability
@@ -63,7 +64,7 @@ specifications:
 - [Overview](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/cart/index.md): Pre-purchase Cart Capability, detailing item collection, state modification, and seamless transition handoff to active checkout sessions.
 - [REST](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/cart/rest/index.md): HTTP REST transport binding for Cart operations, including endpoints for session creation, modification, retrieval, and cancellation.
 - [MCP](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/cart/mcp/index.md): Model Context Protocol (MCP) transport binding for Cart operations, mapping item management to JSON-RPC tools for AI shopping agents.
-- [Embedded protocol](https://sakinaroufid.github.io/pr-test/draft/specification/embedded-protocol/index.md): Core Embedded Protocol (EP) transport binding, defining message formats, handshake patterns, communication channels, security constraints, and shared error handling structures for iframe/webview integrations.
+- [Embedded Protocol](https://sakinaroufid.github.io/pr-test/draft/specification/embedded-protocol/index.md): Core Embedded Protocol (EP) transport binding, defining message formats, handshake patterns, communication channels, security constraints, and shared error handling structures for iframe/webview integrations.
 - [Embedded](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/cart/embedded/index.md): Embedded Cart Protocol (ECaP), enabling secure, cross-origin iframe communication and synchronized event states between platform agents and business websites.
 
 ## Permalink Capability
@@ -89,6 +90,16 @@ specifications:
 - [Fulfillment](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/extensions/fulfillment/index.md): Fulfillment extension for checkouts, defining delivery methods, pickup destinations, and method-agnostic UI rendering contracts.
 - [Discounts](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/extensions/discount/index.md): Discount Extension, covering discount code discovery, applied discounts, allocation method stacking orders, rejected code message handling, and automatic or provisional eligibility promotions.
 - [Buyer Consent](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/extensions/buyer-consent/index.md): Buyer Consent Extension, defining data schemas for transmitting buyer privacy choices (analytics, marketing, personalization) to assist with privacy compliance (CCPA/GDPR).
+
+## Lodging Booking Capability
+
+- [Overview](https://sakinaroufid.github.io/pr-test/draft/specification/lodging/booking/index.md): Core Booking Capability specification detailing necessary data exchange and payment processing for finalizing reservations on a pre-selected room inventory.
+- [REST](https://sakinaroufid.github.io/pr-test/draft/specification/lodging/booking/rest/index.md): HTTP REST transport binding for Booking operations, including endpoints for session creation, modification, retrieval, and cancellation.
+- [MCP](https://sakinaroufid.github.io/pr-test/draft/specification/lodging/booking/mcp/index.md): Model Context Protocol (MCP) transport binding for Booking operations, mapping reservation session management to JSON-RPC tools for AI booking agents.
+
+## Lodging Extensions
+
+- [Cancellation Policy](https://sakinaroufid.github.io/pr-test/draft/specification/lodging/extensions/cancellation-policy/index.md): Lodging Cancellation Policy Extension, defining the dev.ucp.lodging.policy.cancellation type on the core policies[] primitive with a machine-readable refundability classification and a human-readable penalty schedule for lodging reservations.
 
 ## Payment
 

@@ -412,7 +412,94 @@ Content-Type: application/json
       {
         "type": "image",
         "url": "https://cdn.example.com/products/runner-pro-blue.jpg",
-        "alt_text": "Runner Pro in Blue"
+        "alt_text": "Runner Pro in Blue",
+        "width": 1600,
+        "height": 1600,
+        "sources": [
+          {
+            "url": "https://cdn.example.com/products/runner-pro-blue.avif",
+            "mime_type": "image/avif",
+            "format": "avif",
+            "width": 1600,
+            "height": 1600
+          },
+          {
+            "url": "https://cdn.example.com/products/runner-pro-blue.jpg",
+            "mime_type": "image/jpeg",
+            "format": "jpg",
+            "width": 1600,
+            "height": 1600
+          }
+        ]
+      },
+      {
+        "type": "video",
+        "url": "https://cdn.example.com/products/runner-pro-demo-720p.mp4",
+        "name": "Runner Pro flex demo",
+        "alt_text": "Runner Pro shoe flexing to show sole cushioning",
+        "duration": 24,
+        "preview": {
+          "url": "https://cdn.example.com/products/runner-pro-demo-poster.jpg",
+          "width": 1280,
+          "height": 720
+        },
+        "sources": [
+          {
+            "url": "https://cdn.example.com/products/runner-pro-demo-720p.mp4",
+            "mime_type": "video/mp4",
+            "format": "mp4",
+            "width": 1280,
+            "height": 720,
+            "filesize": 4200000
+          },
+          {
+            "url": "https://cdn.example.com/products/runner-pro-demo-1080p.mp4",
+            "mime_type": "video/mp4",
+            "format": "mp4",
+            "width": 1920,
+            "height": 1080,
+            "filesize": 8480000
+          },
+          {
+            "url": "https://cdn.example.com/products/runner-pro-demo.m3u8",
+            "mime_type": "application/vnd.apple.mpegurl",
+            "format": "m3u8"
+          }
+        ]
+      },
+      {
+        "type": "model_3d",
+        "url": "https://cdn.example.com/products/runner-pro.glb",
+        "alt_text": "Runner Pro 3D model",
+        "preview": {
+          "url": "https://cdn.example.com/products/runner-pro-3d-thumb.jpg"
+        },
+        "sources": [
+          {
+            "url": "https://cdn.example.com/products/runner-pro.glb",
+            "mime_type": "model/gltf-binary",
+            "format": "glb",
+            "filesize": 4200000
+          },
+          {
+            "url": "https://cdn.example.com/products/runner-pro.usdz",
+            "mime_type": "model/vnd.usdz+zip",
+            "format": "usdz",
+            "filesize": 5100000
+          }
+        ]
+      },
+      {
+        "type": "external_video",
+        "url": "https://videos.example.com/embed/123",
+        "name": "Runner Pro trail review",
+        "alt_text": "Reviewer running a trail in the Runner Pro",
+        "duration": 212,
+        "preview": {
+          "url": "https://cdn.example.com/products/runner-pro-review-poster.jpg",
+          "width": 1280,
+          "height": 720
+        }
       }
     ],
     "options": [
@@ -601,26 +688,38 @@ UCP metadata for catalog responses.
 | services         | object | Optional     | Service registry keyed by reverse-domain name.                                                                                                 |
 | capabilities     | object | Optional     | Capability registry keyed by reverse-domain name.                                                                                              |
 | payment_handlers | object | Optional     | Payment handler registry keyed by reverse-domain name.                                                                                         |
-| capabilities     | any    | Optional     |                                                                                                                                                |
 
 ### Detail Product
 
 A product in a get_product response, extended with effective selections and availability signals on option values.
 
-| Name     | Type          | Requirement | Description                                                                                                                                                                                          |
-| -------- | ------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| selected | Array[object] | Optional    | Effective option selections that anchor the featured variant and availability signals. Required when the product has configurable options; may be empty or omitted for products with no option axes. |
-| options  | Array[object] | Optional    | Product options with availability signals relative to the effective selections.                                                                                                                      |
+| Name             | Type                                                                                | Requirement  | Description                                                                                                                                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id               | string                                                                              | **Required** | Global ID (GID) uniquely identifying this product.                                                                                                                                                   |
+| handle           | string                                                                              | Optional     | URL-safe slug for SEO-friendly URLs (e.g., 'blue-runner-pro'). Use id for stable API references.                                                                                                     |
+| title            | string                                                                              | **Required** | Product title.                                                                                                                                                                                       |
+| description      | [Description](/pr-test/draft/specification/reference/#description)                  | **Required** | Product description in one or more formats.                                                                                                                                                          |
+| url              | string                                                                              | Optional     | Canonical product page URL.                                                                                                                                                                          |
+| categories       | Array\[[Category](/pr-test/draft/specification/reference/#category)\]               | Optional     | Product categories with optional taxonomy identifiers.                                                                                                                                               |
+| price_range      | [Price Range](/pr-test/draft/specification/reference/#price-range)                  | **Required** | Price range across all variants.                                                                                                                                                                     |
+| list_price_range | [Price Range](/pr-test/draft/specification/reference/#price-range)                  | Optional     | List price range before discounts (for strikethrough display).                                                                                                                                       |
+| media            | Array\[[Media](/pr-test/draft/specification/reference/#media)\]                     | Optional     | Product media (images, videos, 3D models). First item is the featured media for listings.                                                                                                            |
+| options          | Array[object]                                                                       | Optional     | Product options with availability signals relative to the effective selections. Product options (Size, Color, etc.).                                                                                 |
+| variants         | Array\[[Variant](/pr-test/draft/specification/reference/#variant)\]                 | **Required** | Purchasable variants of this product. First item is the featured variant for listings.                                                                                                               |
+| rating           | [Rating](/pr-test/draft/specification/reference/#rating)                            | Optional     | Aggregate product rating.                                                                                                                                                                            |
+| tags             | Array[string]                                                                       | Optional     | Product tags for categorization and search.                                                                                                                                                          |
+| metadata         | object                                                                              | Optional     | Business-defined custom data extending the standard product model.                                                                                                                                   |
+| selected         | Array\[[Selected Option](/pr-test/draft/specification/reference/#selected-option)\] | Optional     | Effective option selections that anchor the featured variant and availability signals. Required when the product has configurable options; may be empty or omitted for products with no option axes. |
 
 ### Get Product Response
 
-| Name     | Type          | Requirement  | Description                                                                                                                                                                    |
-| -------- | ------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| ucp      | any           | **Required** | UCP metadata for catalog responses.                                                                                                                                            |
-| product  | object        | **Required** | The requested product with full detail. Singular — this is a single-resource operation.                                                                                        |
-| actions  | object        | Optional     | Outstanding extension-defined Actions for this product response.                                                                                                               |
-| messages | Array[object] | Optional     | Warnings or informational messages about the product (e.g., price recently changed, limited availability).                                                                     |
-| policies | Array[object] | Optional     | Policies (e.g., return/refund terms) that apply to this product. `applies_to` targets are relative to the response root; when absent or empty, refer to the URLs in `links[]`. |
+| Name     | Type                                                                | Requirement  | Description                                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ucp      | any                                                                 | **Required** | UCP metadata for catalog responses.                                                                                                                                            |
+| product  | object                                                              | **Required** | The requested product with full detail. Singular — this is a single-resource operation.                                                                                        |
+| actions  | [Actions](/pr-test/draft/specification/reference/#actions)          | Optional     | Outstanding extension-defined Actions for this product response.                                                                                                               |
+| messages | Array\[[Message](/pr-test/draft/specification/reference/#message)\] | Optional     | Warnings or informational messages about the product (e.g., price recently changed, limited availability).                                                                     |
+| policies | Array\[[Policy](/pr-test/draft/specification/reference/#policy)\]   | Optional     | Policies (e.g., return/refund terms) that apply to this product. `applies_to` targets are relative to the response root; when absent or empty, refer to the URLs in `links[]`. |
 
 ### Error Response
 

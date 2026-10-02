@@ -134,7 +134,7 @@ Platform-emitted referral and conversion-event context — campaign identifiers,
 
 A catalog item representing a sellable item with one or more purchasable variants.
 
-`media` and `variants` are ordered arrays. Businesses SHOULD return the most relevant variant and image first—default for lookups, best match based on query and context for search. Platforms SHOULD treat the first element as featured.
+`media` and `variants` are ordered arrays. Businesses **SHOULD** return the most relevant variant and media item first — default for lookups, best match based on query and context for search. Platforms **SHOULD** treat the first media item they present as featured.
 
 | Name             | Type                                                                              | Requirement  | Description                                                                                      |
 | ---------------- | --------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------ |
@@ -159,7 +159,7 @@ A purchasable item with specific option selections, price, and availability.
 
 In lookup responses, each variant carries an `inputs` array for correlation: which request identifiers resolved to this variant, and whether the match was `exact` or `featured` (server-selected). See [Client Correlation](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/catalog/lookup/#client-correlation) for details.
 
-`media` is an ordered array. Businesses SHOULD return the featured variant image as the first element. Platforms SHOULD treat the first element as featured.
+`media` is an ordered array. Businesses **SHOULD** return the featured variant media item as the first element. Platforms **SHOULD** treat the first media item they present as featured.
 
 | Name          | Type                                                                                | Requirement  | Description                                                                                                                                                                                                                                                                                                                                                               |
 | ------------- | ----------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -199,13 +199,73 @@ In lookup responses, each variant carries an `inputs` array for correlation: whi
 
 ### Media
 
-| Name     | Type    | Requirement  | Description                                                  |
-| -------- | ------- | ------------ | ------------------------------------------------------------ |
-| type     | string  | **Required** | Media type. Well-known values: `image`, `video`, `model_3d`. |
-| url      | string  | **Required** | URL to the media resource.                                   |
-| alt_text | string  | Optional     | Accessibility text describing the media.                     |
-| width    | integer | Optional     | Width in pixels (for images/video).                          |
-| height   | integer | Optional     | Height in pixels (for images/video).                         |
+One logical media item on a Product or Variant — such as an image, a video, or a 3D model. A media item is a resource the Platform renders: `url` identifies it, `sources` lists alternate renditions of it, `preview` is a still the Platform can show before or instead of it, and `width` and `height` are its intrinsic pixel dimensions. The `width` and `height` on `preview` and on each `sources` entry are the pixel dimensions of that still or rendition.
+
+`type` is an open string with four well-known values: `image`, `video`, `external_video`, and `model_3d`. A Platform **MUST NOT** reject a product or response because it does not recognize a media item's `type`. It **MAY** present such an item from `preview` and `name`, or omit it. Recognizing a `type` only enables type-specific presentation.
+
+A Platform **MAY** refuse to load or embed a media URL that does not use the `https` scheme.
+
+A Platform selects a rendition from `sources` by `mime_type` and dimensions. A Business that provides `sources` **SHOULD** include the rendition at `url`.
+
+| Name     | Type                                                                          | Requirement  | Description                                                                                                                                                                                                                                                        |
+| -------- | ----------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| type     | string                                                                        | **Required** | Media type. Well-known values: `image`, `video`, `external_video`, `model_3d`. A Platform MUST NOT reject the containing object for an unrecognized value; it MAY present the item from `preview` and `name`, or omit it.                                          |
+| url      | string                                                                        | **Required** | URL of the media resource the Platform renders; interpretation is specialized per `type`.                                                                                                                                                                          |
+| name     | string                                                                        | Optional     | Human-readable title or label for the media, distinct from `alt_text` (accessibility text). Often present for `video` and `model_3d`.                                                                                                                              |
+| alt_text | string                                                                        | Optional     | Accessibility text describing the media.                                                                                                                                                                                                                           |
+| width    | integer                                                                       | Optional     | Intrinsic pixel width of the media item, for image and video types; a rendition's own dimensions are on its `sources` entry.                                                                                                                                       |
+| height   | integer                                                                       | Optional     | Intrinsic pixel height of the media item, for image and video types; a rendition's own dimensions are on its `sources` entry.                                                                                                                                      |
+| duration | integer                                                                       | Optional     | Duration in seconds, for time-based media such as `video` and `external_video`.                                                                                                                                                                                    |
+| preview  | object                                                                        | Optional     | Poster/thumbnail still the Platform renders before or instead of the primary resource. A Business SHOULD provide it for `video`, `external_video`, and `model_3d` unless no suitable still exists, and MAY provide it for `image` as a low-resolution placeholder. |
+| sources  | Array\[[Media Source](/pr-test/draft/specification/reference/#media-source)\] | Optional     | Alternate renditions of the resource at `url`. The Business SHOULD include the rendition at `url`.                                                                                                                                                                 |
+
+#### Image
+
+`url` is a directly displayable image. `sources`, when present, lists alternate encodings and sizes of it — for example `image/avif`, `image/webp`, and `image/jpeg`, or width variants for responsive layout. The Business **SHOULD** make `url` the most broadly decodable rendition, because a Platform that does not select from `sources` loads `url` directly.
+
+| Name    | Type                                                                          | Requirement  | Description                                                                                                                                                                             |
+| ------- | ----------------------------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| url     | string                                                                        | **Required** | A directly displayable image.                                                                                                                                                           |
+| sources | Array\[[Media Source](/pr-test/draft/specification/reference/#media-source)\] | Optional     | Alternate encodings and sizes of the image (e.g. `image/avif`, `image/webp`, `image/jpeg`; width variants for responsive layout). `url` SHOULD be the most broadly decodable rendition. |
+
+#### Video
+
+`url` is a playable rendition of the video: a progressive file or an adaptive-streaming manifest. `sources`, when present, lists alternate renditions and manifests.
+
+| Name    | Type                                                                          | Requirement  | Description                                                                                   |
+| ------- | ----------------------------------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------- |
+| url     | string                                                                        | **Required** | A playable rendition of the video: a progressive file or an adaptive-streaming manifest.      |
+| width   | integer                                                                       | Optional     | Intrinsic pixel width of the video; a rendition's own dimensions are on its `sources` entry.  |
+| height  | integer                                                                       | Optional     | Intrinsic pixel height of the video; a rendition's own dimensions are on its `sources` entry. |
+| sources | Array\[[Media Source](/pr-test/draft/specification/reference/#media-source)\] | Optional     | Alternate renditions (MP4/WebM) and adaptive manifests (HLS/DASH).                            |
+
+#### External Video
+
+A video presented through a third-party player. `url` is the player, which the Platform embeds; a video the Business serves as files from any origin, including a CDN, is `video`. A Platform that does not embed third-party players presents `preview` or omits the item.
+
+A Platform that embeds the player **MUST** isolate it from the Platform's authority: no Platform credentials, no access to Platform APIs or agent tools, no protocol messaging privileges, and no navigation of the host application. Before embedding, it **MUST** decline the item unless `url` is an absolute `https` URL without userinfo that is not same-site with the Platform. On the web, the player is one iframe whose `src` is `url`, sandboxed and credentialless, granting only the capabilities the player needs:
+
+```html
+<iframe sandbox="allow-scripts allow-same-origin" allow="fullscreen" credentialless src="https://videos.example.com/embed/123"></iframe>
+```
+
+See [Iframe Sandbox Attributes](https://sakinaroufid.github.io/pr-test/draft/specification/embedded-protocol/#iframe-sandbox-attributes) and [Credentialless Iframes](https://sakinaroufid.github.io/pr-test/draft/specification/embedded-protocol/#credentialless-iframes).
+
+| Name    | Type                                                                          | Requirement  | Description                                                                                                                                          |
+| ------- | ----------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| url     | string                                                                        | **Required** | The third-party player the Platform embeds. A video the Business serves as files from any origin, including a CDN, is `video`, not `external_video`. |
+| sources | Array\[[Media Source](/pr-test/draft/specification/reference/#media-source)\] | Optional     | Not used: a video presented through a player has no renditions.                                                                                      |
+
+#### 3D Model
+
+`url` is the primary model file, such as GLB. `sources`, when present, lists alternate formats such as glTF and USDZ.
+
+| Name    | Type                                                                          | Requirement  | Description                                          |
+| ------- | ----------------------------------------------------------------------------- | ------------ | ---------------------------------------------------- |
+| url     | string                                                                        | **Required** | The primary model file (e.g. GLB).                   |
+| width   | integer                                                                       | Optional     | Not applicable: a 3D model has no pixel dimensions.  |
+| height  | integer                                                                       | Optional     | Not applicable: a 3D model has no pixel dimensions.  |
+| sources | Array\[[Media Source](/pr-test/draft/specification/reference/#media-source)\] | Optional     | Alternate file formats of the model (glTF/GLB/USDZ). |
 
 ### Product Option
 
@@ -244,7 +304,7 @@ Policies (return/refund terms, warranty, and the like) that apply to the product
 
 | Name        | Type                                                                               | Requirement  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ----------- | ---------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| type        | [Reverse Domain Name](/pr-test/draft/specification/reference/#reverse-domain-name) | **Required** | Policy type discriminator. Open reverse-DNS vocabulary. Well-known values: `dev.ucp.shopping.policy.return` (return terms), `dev.ucp.shopping.policy.warranty` (warranty terms). Businesses MAY define custom types in their own domain (e.g., `com.example.policy.price_match`). Platforms MUST tolerate unknown values.                                                                                                                                                                                                                                                                                                                                                          |
+| type        | [Reverse Domain Name](/pr-test/draft/specification/reference/#reverse-domain-name) | **Required** | Policy type discriminator. Open reverse-DNS vocabulary. See specification documentation for the registry of well-known policy types. Businesses MAY define custom types in their own domain (e.g., `com.example.policy.price_match`). Platforms MUST tolerate unknown values.                                                                                                                                                                                                                                                                                                                                                                                                      |
 | description | [Description](/pr-test/draft/specification/reference/#description)                 | **Required** | Human-readable policy summary in one or more formats (plain, markdown, html). Required on every policy so a platform can present it without understanding any type-specific fields. This is not the buyer-facing disclosure — display is compelled by a `messages[]` warning (see the Policies section).                                                                                                                                                                                                                                                                                                                                                                           |
 | applies_to  | Array[string]                                                                      | Optional     | RFC 9535 JSONPath expressions identifying the nodes this policy applies to, relative to the embedding response root (e.g., `$.line_items[0]` in cart/checkout, `$.products[2]` in catalog). Each target covers the node it names and everything nested under it, so a target on a product also covers its variants. A singular query (RFC 9535 Section 2.3.5.1; name and index selectors only) names a single node; filters, wildcards, and slices match a set. When omitted, the policy applies to the entire response. When policies of the same `type` contest a node, the narrowest target wins and overrides the rest. See the Policies section for how specificity resolves. |
 | url         | string                                                                             | Optional     | Optional link to the full policy document.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
