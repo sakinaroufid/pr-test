@@ -261,7 +261,7 @@ Maps to the [Create Checkout](https://sakinaroufid.github.io/pr-test/draft/speci
                   {
                     "id": "standard",
                     "title": "Standard Shipping",
-                    "description": "Arrives in 5-7 business days",
+                    "description": { "plain": "Arrives in 5-7 business days" },
                     "totals": [
                       {
                         "type": "total",
@@ -272,7 +272,7 @@ Maps to the [Create Checkout](https://sakinaroufid.github.io/pr-test/draft/speci
                   {
                     "id": "express",
                     "title": "Express Shipping",
-                    "description": "Arrives in 2-3 business days",
+                    "description": { "plain": "Arrives in 2-3 business days" },
                     "totals": [
                       {
                         "type": "total",
@@ -506,7 +506,7 @@ The Platform **MUST NOT** start a new `update_checkout` operation while the Chec
                   {
                     "id": "standard",
                     "title": "Standard Shipping",
-                    "description": "Arrives in 5-7 business days",
+                    "description": { "plain": "Arrives in 5-7 business days" },
                     "totals": [
                       {
                         "type": "total",
@@ -517,7 +517,7 @@ The Platform **MUST NOT** start a new `update_checkout` operation while the Chec
                   {
                     "id": "express",
                     "title": "Express Shipping",
-                    "description": "Arrives in 2-3 business days",
+                    "description": { "plain": "Arrives in 2-3 business days" },
                     "totals": [
                       {
                         "type": "total",
@@ -565,6 +565,9 @@ Maps to the [Complete Checkout](https://sakinaroufid.github.io/pr-test/draft/spe
   - `idempotency-key` (String, UUID): **Required**. Unique key for retry safety.
 - `id` (String): **Required**. The ID of the checkout session.
 - `checkout` ([Checkout](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/checkout/#complete-checkout)): **Required**. Contains payment credentials and other finalization data to execute the transaction.
+  - Extensions (Optional):
+    - `dev.ucp.shopping.buyer_consent`: [Buyer Consent](https://sakinaroufid.github.io/pr-test/draft/specification/shopping/extensions/buyer-consent/index.md)
+    - `dev.ucp.common.payment.ap2_mandate`: [AP2 Mandates](https://sakinaroufid.github.io/pr-test/draft/specification/payment/extensions/ap2-mandates/index.md)
 
 #### Output Schema
 

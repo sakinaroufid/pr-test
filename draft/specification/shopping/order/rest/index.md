@@ -69,21 +69,21 @@ Returns the current-state snapshot of an order.
 
 #### Output Schema
 
-| Name          | Type                                                                                | Requirement  | Description                                                                                                                                                        |
-| ------------- | ----------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| ucp           | any                                                                                 | **Required** | UCP metadata for order responses. No payment handlers needed post-purchase.                                                                                        |
-| id            | string                                                                              | **Required** | Unique order identifier.                                                                                                                                           |
-| label         | string                                                                              | Optional     | Human-readable label for identifying the order. MUST only be provided by the business.                                                                             |
-| checkout_id   | string                                                                              | **Required** | Associated checkout ID for reconciliation.                                                                                                                         |
-| permalink_url | string                                                                              | **Required** | Permalink to access the order on merchant site.                                                                                                                    |
-| line_items    | Array\[[Order Line Item](/pr-test/draft/specification/reference/#order-line-item)\] | **Required** | Line items representing what was purchased — can change post-order via edits or exchanges.                                                                         |
-| fulfillment   | object                                                                              | **Required** | Fulfillment data: buyer expectations and what actually happened.                                                                                                   |
-| adjustments   | Array\[[Adjustment](/pr-test/draft/specification/reference/#adjustment)\]           | Optional     | Post-order events (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment.                                              |
-| currency      | string                                                                              | **Required** | ISO 4217 currency code. MUST match the currency from the originating checkout session.                                                                             |
-| totals        | [Totals](/pr-test/draft/specification/reference/#totals)                            | **Required** | Different totals for the order.                                                                                                                                    |
-| policies      | Array\[[Policy](/pr-test/draft/specification/reference/#policy)\]                   | Optional     | Snapshot of the policies that applied to the items at checkout, captured on the order as a durable record. `applies_to` targets are relative to the response root. |
-| messages      | Array\[[Message](/pr-test/draft/specification/reference/#message)\]                 | Optional     | Business outcome messages (errors, warnings, informational). Present when the business needs to communicate status or issues to the platform.                      |
-| attribution   | [Attribution](/pr-test/draft/specification/reference/#attribution)                  | Optional     | Snapshot of the attribution associated with the originating checkout. Read-only on the order.                                                                      |
+| Name          | Type                                                                                           | Requirement  | Description                                                                                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ucp           | [UCP Order Response Schema](/pr-test/draft/specification/reference/#ucp-response-order-schema) | **Required** | UCP metadata for order responses. No payment handlers needed post-purchase.                                                                                        |
+| id            | string                                                                                         | **Required** | Unique order identifier.                                                                                                                                           |
+| label         | string                                                                                         | Optional     | Human-readable label for identifying the order. MUST only be provided by the business.                                                                             |
+| checkout_id   | string                                                                                         | **Required** | Associated checkout ID for reconciliation.                                                                                                                         |
+| permalink_url | string                                                                                         | **Required** | Permalink to access the order on merchant site.                                                                                                                    |
+| line_items    | Array\[[Order Line Item](/pr-test/draft/specification/reference/#order-line-item)\]            | **Required** | Line items representing what was purchased — can change post-order via edits or exchanges.                                                                         |
+| fulfillment   | object                                                                                         | **Required** | Fulfillment data: buyer expectations and what actually happened.                                                                                                   |
+| adjustments   | Array\[[Adjustment](/pr-test/draft/specification/reference/#adjustment)\]                      | Optional     | Post-order events (refunds, returns, credits, disputes, cancellations, etc.) that exist independently of fulfillment.                                              |
+| currency      | string                                                                                         | **Required** | ISO 4217 currency code. MUST match the currency from the originating checkout session.                                                                             |
+| totals        | [Totals](/pr-test/draft/specification/reference/#totals)                                       | **Required** | Different totals for the order.                                                                                                                                    |
+| policies      | Array\[[Policy](/pr-test/draft/specification/reference/#policy)\]                              | Optional     | Snapshot of the policies that applied to the items at checkout, captured on the order as a durable record. `applies_to` targets are relative to the response root. |
+| messages      | Array\[[Message](/pr-test/draft/specification/reference/#message)\]                            | Optional     | Business outcome messages (errors, warnings, informational). Present when the business needs to communicate status or issues to the platform.                      |
+| attribution   | [Attribution](/pr-test/draft/specification/reference/#attribution)                             | Optional     | Snapshot of the attribution associated with the originating checkout. Read-only on the order.                                                                      |
 
 #### Example
 
@@ -234,13 +234,7 @@ Content-Type: application/json
 
 ### Specific Header Requirements
 
-**UCP-Agent** (required on all requests):
-
-Platform identification using [RFC 8941 Dictionary](https://www.rfc-editor.org/rfc/rfc8941#name-dictionaries) syntax:
-
-```http
-UCP-Agent: profile="https://platform.example/.well-known/ucp"
-```
+- **UCP-Agent**: All requests **MUST** include the `UCP-Agent` header containing the platform profile URI using Dictionary Structured Field syntax ([RFC 8941](https://datatracker.ietf.org/doc/html/rfc8941)). Format: `profile="https://platform.example/profile"`.
 
 ## Message Signing
 
