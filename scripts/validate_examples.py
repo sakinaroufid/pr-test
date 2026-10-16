@@ -89,6 +89,12 @@ Layer 3 — Semantic interpretation. Operates on the parsed tree:
     alone when ambiguous. `$ref: "#"` is a bundling recursion marker
     and is not followed.
   - The merged payload is validated by `ucp-schema validate`.
+  - Extension fields: if the payload carries a top-level field that
+    the annotated capability does not declare but an extension
+    composes onto it (under the extension's $defs/<capability name>,
+    e.g. checkout `fulfillment`), the payload is also validated
+    against that extension's composed schema. Capability schemas are
+    open, so without this such fields would go unchecked.
   - Validation errors whose path is an elided path (or descendant)
     are suppressed, as is a missing-required-property error naming an
     elided property: it is reported against the enclosing object, one
@@ -455,6 +461,23 @@ def _is_elided(path: str, ellipsis_paths: set[str]) -> bool:
 # object and names the field in the message; there is no structured
 # keyword in its JSON output to key off instead.
 _REQUIRED_PROPERTY_RE = re.compile(r'^"(.+)" is a required property$')
+
+
+def _is_suppressed(error: dict, ellipsis_paths: set[str]) -> bool:
+  """Report whether an elision marker accounts for a validation error.
+
+  An error at or below an acknowledged elision is expected. So is the
+  enclosing object's "required property" error when the field it names is
+  itself elided: `"..."` on a required field drops the key, so the
+  violation is reported one level above the recorded path.
+  """
+  path = error.get("path", "")
+  if _is_elided(path, ellipsis_paths):
+    return True
+  missing = _REQUIRED_PROPERTY_RE.match(error.get("message", ""))
+  return missing is not None and _is_elided(
+    f"{path}/{missing.group(1)}", ellipsis_paths
+  )
 
 
 # -----------------------------------------------------------
@@ -936,6 +959,105 @@ def validate_payload_with_schema(
 
 
 # -----------------------------------------------------------
+# Extension validation
+# -----------------------------------------------------------
+
+_extension_cache: dict[Path, tuple[dict, dict]] = {}
+
+
+def load_extensions(schema_base: Path) -> tuple[dict, dict]:
+  """Index capabilities and the extensions that compose onto them.
+
+  Returns (capabilities, extensions). capabilities maps a capability
+  name (e.g. dev.ucp.shopping.checkout) to its schema path. extensions
+  maps a capability name to (schema path, added fields) for every other
+  schema that composes onto it under $defs/<capability name>, where
+  added fields are the properties the extension's own allOf branches
+  declare.
+  """
+  key = schema_base.resolve()
+  if key in _extension_cache:
+    return _extension_cache[key]
+
+  schemas = {}
+  for path in sorted(schema_base.rglob("*.json")):
+    rel = path.relative_to(schema_base).with_suffix("").as_posix()
+    schemas[rel] = json.loads(path.read_text(encoding="utf-8"))
+
+  capabilities = {
+    schema["name"]: rel
+    for rel, schema in schemas.items()
+    if str(schema.get("name", "")).startswith("dev.ucp.")
+  }
+  extensions: dict[str, list[tuple[str, frozenset[str]]]] = {}
+  for rel, schema in schemas.items():
+    for name, composed in schema.get("$defs", {}).items():
+      if name not in capabilities or capabilities[name] == rel:
+        continue
+      added = set(composed.get("properties", {}))
+      for branch in composed.get("allOf", []):
+        if "$ref" not in branch:
+          added.update(branch.get("properties", {}))
+      if added:
+        extensions.setdefault(name, []).append((rel, frozenset(added)))
+
+  _extension_cache[key] = (capabilities, extensions)
+  return capabilities, extensions
+
+
+def validate_extensions(
+  payload: dict,
+  schema_path: str,
+  schema_def: str | None,
+  resolved: dict,
+  direction: str,
+  op: str,
+  schema_base: Path,
+) -> list[tuple[str, list[dict]]]:
+  """Validate a payload against each extension whose fields it carries.
+
+  Capability schemas are open, so a field that only an extension
+  declares (e.g. checkout `fulfillment`) passes validation against the
+  capability unchecked. When the payload carries such a field, it is
+  also validated against that extension's composed schema. Fields the
+  capability itself declares (e.g. `payment`, `buyer`) do not trigger
+  this, since the capability already validates them.
+
+  Returns (extension schema path, errors) for each failing extension.
+  """
+  if not isinstance(payload, dict):
+    return []
+  capabilities, extensions = load_extensions(schema_base)
+  if schema_def:
+    capability = schema_def if schema_def in capabilities else None
+  else:
+    capability = resolved.get("name")
+  if capability not in extensions:
+    return []
+
+  base = resolve_schema(capabilities[capability], direction, op, schema_base)
+  declared = set(base.get("properties", {}))
+
+  failures = []
+  for ext_path, added in extensions[capability]:
+    if ext_path == schema_path and schema_def == capability:
+      continue
+    if not (added - declared) & payload.keys():
+      continue
+    composed = resolve_schema(ext_path, direction, op, schema_base)
+    valid, errors = validate_payload_with_schema(
+      payload,
+      composed["$defs"][capability],
+      direction,
+      op,
+      schema_base,
+    )
+    if not valid:
+      failures.append((ext_path, errors))
+  return failures
+
+
+# -----------------------------------------------------------
 # Scaffold loading
 # -----------------------------------------------------------
 
@@ -1205,22 +1327,32 @@ def process_block(
   except RuntimeError as e:
     return Result(file, line, "error", str(e), annotation)
 
+  # 10. Validate fields contributed by extensions
+  try:
+    extension_errors = validate_extensions(
+      merged, schema_path, schema_def, resolved, direction, op, schema_base
+    )
+  except RuntimeError as e:
+    return Result(file, line, "error", str(e), annotation)
+
   # Collect all failures
   messages: list[str] = []
   for ce in coverage_errors:
     messages.append(f"coverage: {ce}")
   for ve in val_errors:
-    # Suppress errors at ellipsis-acknowledged paths
+    # Suppress errors an elision marker already accounts for.
+    if _is_suppressed(ve, ellipsis_paths):
+      continue
     err_path = ve.get("path", "")
-    if _is_elided(err_path, ellipsis_paths):
-      continue
-    # "..." on a required field drops the key, and the resulting
-    # violation is reported against the enclosing object, one level
-    # above the recorded path. Suppress when it names an elided field.
-    missing = _REQUIRED_PROPERTY_RE.match(ve.get("message", ""))
-    if missing and _is_elided(f"{err_path}/{missing.group(1)}", ellipsis_paths):
-      continue
     messages.append(f"validation: {err_path} \u2014 {ve.get('message', '')}")
+  for ext_path, errors in extension_errors:
+    for ve in errors:
+      if _is_suppressed(ve, ellipsis_paths):
+        continue
+      err_path = ve.get("path", "")
+      messages.append(
+        f"extension {ext_path}: {err_path} \u2014 {ve.get('message', '')}"
+      )
 
   if messages:
     return Result(
