@@ -795,13 +795,9 @@ class UcpBackend {
         li.status = "fulfilled";
     });
 
-    const webhookPayload = {
-        ...order,
-        event_id: eventId,
-        created_time: eventTime
-    };
-
-    return webhookPayload;
+    // Event metadata travels in the Webhook-Id and Webhook-Timestamp
+    // headers; the body is the order itself.
+    return order;
   }
 }
 
