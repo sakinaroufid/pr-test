@@ -1098,7 +1098,7 @@ For the full verifier algorithm — capability-based key resolution, profile fet
 Profiles, and the schema and transport-description artifacts they reference, must be reliably hosted. An unreliable or misconfigured endpoint may prevent the other party from processing requests.
 
 1. Published artifacts **MUST** be served over HTTPS.
-1. Profile endpoints **MUST NOT** use redirects (3xx).
+1. Profile endpoints **MUST NOT** redirect to another URL (`301`, `302`, `303`, `307`, `308`). Answering a conditional request with `304 Not Modified` is not a redirect and is allowed.
 1. Published artifacts **MUST** include a `Cache-Control` header with `public` and `max-age` of at least 60 seconds, and **MUST NOT** be served with `private`, `no-store`, or `no-cache` directives.
 1. Published artifacts **SHOULD** include a validator (`ETag` or `Last-Modified`) so consumers can revalidate cached copies efficiently.
 
@@ -1120,7 +1120,7 @@ When a platform is *not recognized*, it triggers dynamic profile discovery. Busi
 These rules apply to any URL dereferenced during identity resolution — the profile, and any `jwks_uri` or CIMD document a verifier follows:
 
 1. Implementations **MUST** reject URLs not served over HTTPS.
-1. Implementations **MUST NOT** follow redirects (3xx).
+1. Implementations **MUST NOT** follow redirects to another URL (`301`, `302`, `303`, `307`, `308`). A `304 Not Modified` received in response to a conditional request is not a redirect; implementations should keep using their cached copy.
 1. Implementations **SHOULD** enforce connect and response timeouts.
 1. Implementations **SHOULD** cache profiles with a minimum TTL floor of 60 seconds, regardless of the origin's `Cache-Control` headers.
 1. Implementations **MAY** refresh profiles asynchronously using stale-while-revalidate semantics.
@@ -1165,7 +1165,7 @@ A request MAY carry multiple signatures per [RFC 9421 §4.3](https://www.rfc-edi
 1. **Fetch the document** per [§Fetching](#fetching). If the fetch fails (DNS error, network failure, non-2xx response, parse failure), **skip** this signature.
 1. **Locate the key list.** The profile's top-level `keys[]` (RFC 7517 JWK Set) when resolved via `UCP-Agent` or via `Signature-Agent` `type=jwks_uri`; for `type=cimd`, dereference the document's `jwks_uri` to obtain the JWK Set. Integrity derives from TLS to the resolved origin.
 1. **Match the signature's `keyid`** to a `kid` in the resolved key list. When resolving, **skip keys not usable for signature verification**: any key marked `use:"enc"`, or whose `key_ops` is present but does not include `"verify"` ([RFC 7517](https://www.rfc-editor.org/rfc/rfc7517) §4.2, §4.3). Keys that set `use:"sig"` or omit both members remain eligible. **Skip** this signature if no eligible key matches. For WBA-shape signatures (`tag="web-bot-auth"`), the verifier **MUST** also confirm `keyid` equals the [RFC 7638](https://www.rfc-editor.org/rfc/rfc7638) SHA-256 thumbprint of the matched JWK — the WBA architecture draft §4.2 requires this, binding the advertised key identity to its bytes. If it fails, skip this signature.
-1. **Enforce covered-component requirements, in every regime.** Independent of `tag` and transport, the signature **MUST** cover the request target (`@method`, `@authority`, `@path`; `@query` when a query string is present), the body when present (`content-digest`, `content-type`), and each of these request headers when present: `ucp-agent`, `signature-agent`, `idempotency-key` (a closed set — a header added to UCP later is gate-required only if its defining section says so). If any such component is absent from the signature's covered set, **skip** this signature — a target, body, or header the signature does not cover is treated as unsigned. This prevents a signature satisfying only Web Bot Auth's minimal covered set (`@authority`, `signature-agent`) from authenticating a UCP request whose body, method, or path is unbound. (Whether a request must carry `Idempotency-Key` at all is a binding-level rule, separate from this coverage check.)
+1. **Enforce covered-component requirements, in every regime.** Independent of `tag` and transport, the signature **MUST** cover the request target (`@method`, `@authority`, `@path`; `@query` when a query string is present), the body when present (`content-digest`, `content-type`), and each of these request headers when present: `ucp-agent`, `signature-agent`, `idempotency-key`, `webhook-id`, `webhook-timestamp` (a closed set — a header added to UCP later is gate-required only if its defining section says so). If any such component is absent from the signature's covered set, **skip** this signature — a target, body, or header the signature does not cover is treated as unsigned. This prevents a signature satisfying only Web Bot Auth's minimal covered set (`@authority`, `signature-agent`) from authenticating a UCP request whose body, method, or path is unbound. (Whether a request must carry `Idempotency-Key` at all is a binding-level rule, separate from this coverage check.)
 1. **Verify the signature** using the matched key. The signing algorithm is derived from the JWK's `kty`/`crv`. If the verifier does not support the matched key's `kty`, `crv`, or `alg`, **skip** this signature; it yields `algorithm_unsupported` if no other signature authenticates the request.
 
 The request **MUST** be rejected (`key_not_found`, `algorithm_unsupported`, or related error) only when every signature has been skipped or fails verification.
@@ -3968,7 +3968,7 @@ Businesses **SHOULD** include this info-severity code in successful responses wh
 - **`scopes_supported`.** Businesses **MUST** populate `scopes_supported` in RFC 8414 metadata. Platforms **SHOULD** verify that the derived scope set is a subset of `scopes_supported` before initiating the authorization flow, to fail fast on scope mismatches rather than at the consent screen.
 - **Token revocation.** Platforms **MUST** revoke user identity tokens at the business's revocation endpoint (RFC 7009) when a user unlinks their account. Businesses **MUST** reject subsequent requests that present revoked tokens.
 - **JWT grant lifetime.** JWT authorization grants **MUST** be short-lived; the `exp` claim **SHOULD** be no more than 60 seconds after `iat`. Short lifetimes limit the window for grant theft and replay.
-- **JWT grant single-use.** Businesses **MUST** enforce single-use JWT; a short exp narrows the replay window, but only jti tracking closes it. authorization grants by tracking the `jti` claim within the grant's validity window.
+- **JWT grant single-use.** Businesses **MUST** enforce single-use JWT authorization grants by tracking the `jti` claim within the grant's validity window. A short `exp` narrows the replay window, but only `jti` tracking closes it.
 - **Grant relay.** Businesses **MUST NOT** store or forward JWT authorization grants received from platforms. Grants are bearer credentials scoped to a single audience (`aud`) and a single use.
 - **Cross-IdP account linking.** Federation collapses trust boundaries: a business that auto-links accounts across listed providers based on any IdP-asserted claim (email, phone, name) extends each provider's verification process into account-takeover risk. A provider that issues `email_verified=true` for an email the user does not control can hijack any account at the business sharing that email. The stable per-IdP identifier is `(iss, sub)`; other claims are advisory. Businesses **SHOULD** require user-mediated linking — the user demonstrating control of the existing account via current-session authentication or equivalent — before merging accounts across IdPs.
 
@@ -4641,8 +4641,8 @@ The loyalty extension can provide buyer status information that helps the platfo
     {"type": "subtotal", "display_text": "Subtotal", "amount": 1000},
     {"type": "items_discount", "display_text": "Club member benefit", "amount": -150},
     {"type": "discount", "display_text": "Free shipping for Retail Card holder", "amount": -199},
-    {"type": "fulfillment", "display_text": "Shipping", "amount": 0},
-    {"type": "total", "display_text": "Estimated Total", "amount": 651}
+    {"type": "fulfillment", "display_text": "Shipping", "amount": 199},
+    {"type": "total", "display_text": "Estimated Total", "amount": 850}
   ]
 }
 ```
@@ -5724,6 +5724,39 @@ Content-Type: application/json
   ]
 }
 ```
+
+## HTTP Headers
+
+The following headers are defined for the HTTP binding and apply to all operations unless otherwise noted.
+
+**Request Headers**
+
+| Header            | Required | Description                                                                                                                           |
+| ----------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `Authorization`   | No       | Contains an OAuth token representing Platform or Buyer credentials.                                                                   |
+| `X-API-Key`       | No       | Reusable API key allocated to the Platform by the Business.                                                                           |
+| `Signature`       | No       | RFC 9421 HTTP Message Signature. Format: `sig1=:<base64-signature>:`.                                                                 |
+| `Signature-Input` | No       | RFC 9421 Signature-Input header. Format: `sig1=("@method" "@path" ...);created=<timestamp>;keyid="<key-id>"`.                         |
+| `Content-Digest`  | No       | Body digest per RFC 9530. Format: `sha-256=:<base64-digest>:`.                                                                        |
+| `Request-Id`      | **Yes**  | Unique UUID for tracing requests across components.                                                                                   |
+| `User-Agent`      | No       | Identifies the user agent string making the call.                                                                                     |
+| `UCP-Agent`       | **Yes**  | Identifies the UCP agent making the call, containing the signer's profile URI. Format: profile="https://example.com/.well-known/ucp". |
+| `Content-Type`    | No       | Representation Metadata describing the body content.                                                                                  |
+| `Accept`          | No       | Content Negotiation, indicating accepted formats.                                                                                     |
+| `Accept-Language` | No       | Preferred natural languages for localization.                                                                                         |
+| `Accept-Encoding` | No       | Supported content-codings (compression).                                                                                              |
+
+**Response Headers**
+
+| Header            | Required | Description                                   |
+| ----------------- | -------- | --------------------------------------------- |
+| `Signature`       | No       | RFC 9421 HTTP Message Signature for response. |
+| `Signature-Input` | No       | RFC 9421 Signature-Input header for response. |
+| `Content-Digest`  | No       | Body digest per RFC 9530 for response.        |
+
+### Specific Header Requirements
+
+- **UCP-Agent**: All requests **MUST** include the `UCP-Agent` header containing the platform profile URI using Dictionary Structured Field syntax ([RFC 8941](https://datatracker.ietf.org/doc/html/rfc8941)). Format: `profile="https://platform.example/profile"`.
 
 ## Error Handling
 
@@ -7367,28 +7400,32 @@ For HTTP REST transport, UCP uses [RFC 9421 (HTTP Message Signatures)](https://w
 
 **Signed Components:**
 
-| Component         | Required     | Description                                                  |
-| ----------------- | ------------ | ------------------------------------------------------------ |
-| `@method`         | Yes          | HTTP method (GET, POST, etc.)                                |
-| `@authority`      | Yes          | Target host (prevents cross-host relay)                      |
-| `@path`           | Yes          | Request path                                                 |
-| `@query`          | Cond. `*`    | Query string (if present)                                    |
-| `ucp-agent`       | Cond. `**`   | Profile URL (binds identity)                                 |
-| `signature-agent` | Cond. `***`  | WBA key source (when [WBA Interop](#wba-interop) opted into) |
-| `idempotency-key` | Cond. `****` | Idempotency header (state-changing)                          |
-| `content-digest`  | Cond. `†`    | Body digest (if body present)                                |
-| `content-type`    | Cond. `†`    | Content-Type (if body present)                               |
+| Component           | Required     | Description                                                  |
+| ------------------- | ------------ | ------------------------------------------------------------ |
+| `@method`           | Yes          | HTTP method (GET, POST, etc.)                                |
+| `@authority`        | Yes          | Target host (prevents cross-host relay)                      |
+| `@path`             | Yes          | Request path                                                 |
+| `@query`            | Cond. `*`    | Query string (if present)                                    |
+| `ucp-agent`         | Cond. `**`   | Profile URL (binds identity)                                 |
+| `signature-agent`   | Cond. `***`  | WBA key source (when [WBA Interop](#wba-interop) opted into) |
+| `idempotency-key`   | Cond. `****` | Idempotency header (state-changing)                          |
+| `webhook-id`        | Cond. `‡`    | Event identifier (webhooks)                                  |
+| `webhook-timestamp` | Cond. `‡`    | Event occurrence time (webhooks)                             |
+| `content-digest`    | Cond. `†`    | Body digest (if body present)                                |
+| `content-type`      | Cond. `†`    | Content-Type (if body present)                               |
 
 - `*` Required if request has query parameters
 - `**` Required if `UCP-Agent` header is present
 - `***` Required if `Signature-Agent` header is present (i.e., WBA-shape signature)
-- `****` Required for POST, PUT, DELETE, PATCH
+- `****` Required if the header is present. Whether a request must carry `Idempotency-Key` at all is a binding-level rule, separate from this coverage check
+- `‡` Required if the header is present. Webhook deliveries carry no `Idempotency-Key`, so these two headers are the only per-event replay signal; a signature omitting them leaves a signed delivery open to replay with an altered event identity or event time.
 - `†` Required if request has a body
 
 **Signature Generation:**
 
 ```text
-sign_rest_request(method, path, query, body_bytes, idempotency_key, private_key, kid):
+sign_rest_request(method, path, query, body_bytes, idempotency_key, webhook_id,
+                  webhook_timestamp, private_key, kid):
     // 1. Compute body digest (if body present)
     if body_bytes:
         digest = sha256(body_bytes)  // Hash raw bytes, no canonicalization
@@ -7399,6 +7436,8 @@ sign_rest_request(method, path, query, body_bytes, idempotency_key, private_key,
     if query: components.append("@query")
     if ucp_agent: components.append("ucp-agent")
     if idempotency_key: components.append("idempotency-key")
+    if webhook_id: components.append("webhook-id")
+    if webhook_timestamp: components.append("webhook-timestamp")
     if body: components.extend(["content-digest", "content-type"])
 
     // 3. Build signature base (RFC 9421)
@@ -7409,6 +7448,8 @@ sign_rest_request(method, path, query, body_bytes, idempotency_key, private_key,
         query=query,
         headers={
             "idempotency-key": idempotency_key,
+            "webhook-id": webhook_id,
+            "webhook-timestamp": webhook_timestamp,
             "content-digest": digest_header,
             "content-type": "application/json"
         },
@@ -7616,6 +7657,8 @@ verify_rest_request(request):
     if request.has_body:                     required += ["content-digest", "content-type"]
     if "Idempotency-Key" in request.headers: required += ["idempotency-key"]
     if "UCP-Agent" in request.headers:       required += ["ucp-agent"]
+    if "Webhook-Id" in request.headers:      required += ["webhook-id"]
+    if "Webhook-Timestamp" in request.headers: required += ["webhook-timestamp"]
     if "Signature-Agent" in request.headers: required += ["signature-agent"]
     for component in required:
         if component not in components:
@@ -8962,6 +9005,17 @@ The business controls what MUST be rendered (top-level entries) versus what MAY 
   { "type": "tax",         "display_text": "Federal Tax", "amount": 332 },
   { "type": "tax",         "display_text": "State Tax",   "amount": 465 },
   { "type": "total",       "display_text": "Total",       "amount": 7446 }
+]
+```
+
+**Tax-inclusive total with itemized VAT rates:**
+
+```json
+[
+  { "type": "subtotal", "display_text": "Subtotal (net)", "amount": 6000 },
+  { "type": "tax",      "display_text": "VAT 20%",        "amount": 800 },
+  { "type": "tax",      "display_text": "VAT 5.5%",       "amount": 110 },
+  { "type": "total",    "display_text": "Total",          "amount": 6910 }
 ]
 ```
 
@@ -16117,7 +16171,7 @@ A Business MUST NOT use permanent redirects such as `301` or `308` for permalink
 
 A Business SHOULD construct a purchasable cart, checkout, or equivalent server-side state when the provided inputs are sufficient. When purchasable state can be constructed and `continue_to` is absent, a Business SHOULD redirect to its default purchase destination. If purchasable state cannot be constructed, a Business SHOULD route the buyer to a valid `continue_to` destination when present; otherwise it SHOULD route the buyer to a safe fallback, such as the storefront root, cart, or a buyer-facing remediation page.
 
-A Business decides how to construct that state: it MAY create a new cart, stage a separate checkout, or merge the permalink items into an existing cart, and MAY either offer the buyer a choice or apply an automated policy — except that the Business MUST require an explicit buyer action on rendered permalink state before merging that state into an authenticated buyer's existing cart, and an automatic merge performed on page load, on redirect, or through a pre-filled submission does not satisfy this requirement. The permalink expresses buyer intent; the response conveys the resulting state. A Business MAY also require additional steps — such as verification, eligibility or age gating, or authentication — before it constructs purchasable state, and routes the buyer accordingly.
+A Business decides how to construct that state: it MAY merge the permalink items into an existing cart, create a new cart, or stage a separate checkout, and MAY either offer the buyer a choice or apply an automated policy. The permalink expresses buyer intent; the response conveys the resulting state. A Business MAY also require additional steps — such as verification, eligibility or age gating, or authentication — before it constructs purchasable state, and routes the buyer accordingly.
 
 A Business SHOULD apply query parameters it understands. Applied parameters may affect server-side state or destination selection, and are not required to appear on the redirect URL. UCP field-path query parameters SHOULD be consumed and removed by default.
 
@@ -16134,6 +16188,8 @@ can resolve to:
 ```http
 HTTP/1.1 303 See Other
 Location: https://merchant.example/collections/spring?utm_source=email&utm_medium=sms&color=black
+Cache-Control: no-store
+Referrer-Policy: no-referrer
 ```
 
 In this example:
@@ -16182,6 +16238,8 @@ Possible resolution:
 ```http
 HTTP/1.1 303 See Other
 Location: https://checkout.merchant.example/session/chk_123
+Cache-Control: no-store
+Referrer-Policy: no-referrer
 ```
 
 ### Campaign link with discount and continuation
@@ -16220,6 +16278,8 @@ Possible resolution:
 ```http
 HTTP/1.1 303 See Other
 Location: https://merchant.example/collections/spring?utm_source=email
+Cache-Control: no-store
+Referrer-Policy: no-referrer
 ```
 
 ### Buyer-directed purchase link
@@ -16271,6 +16331,8 @@ Possible resolution:
 ```http
 HTTP/1.1 303 See Other
 Location: https://checkout.merchant.example/session/chk_123
+Cache-Control: no-store
+Referrer-Policy: no-referrer
 ```
 
 ### Pickup with a pre-selected destination
@@ -16297,6 +16359,8 @@ Possible resolution:
 ```http
 HTTP/1.1 303 See Other
 Location: https://checkout.merchant.example/session/chk_123
+Cache-Control: no-store
+Referrer-Policy: no-referrer
 ```
 
 ## Security Considerations
@@ -19361,10 +19425,10 @@ Headers follow **[Standard Webhooks](https://www.standardwebhooks.com/)**; excep
 
 **Required Headers:**
 
-| Header              | Description                       |
-| ------------------- | --------------------------------- |
-| `Webhook-Timestamp` | Event occurrence timestamp (unix) |
-| `Webhook-Id`        | Unique event identifier           |
+| Header              | Description                             |
+| ------------------- | --------------------------------------- |
+| `Webhook-Timestamp` | Event occurrence timestamp (unix)       |
+| `Webhook-Id`        | Event identifier; stable across retries |
 
 **Inputs**
 
@@ -19427,6 +19491,12 @@ Webhook payloads **MUST** be signed by the business and verified by the platform
 | `Signature`       | Contains the signature value               |
 | `Content-Digest`  | Body digest (RFC 9530)                     |
 
+`Webhook-Id` and `Webhook-Timestamp` are required headers on this delivery, so the covered-component rule in [REST Request Signing](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-signing) requires the signature to cover them, and [REST Request Verification](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-verification) requires platforms to reject a delivery whose signature omits either. Webhooks carry no `Idempotency-Key`, so these two headers are the only per-event replay signal.
+
+An order webhook carries the full current state of the order rather than a delta, so a platform that applies deliveries in `Webhook-Timestamp` order, or reconciles through `GET /orders/{id}`, converges on the current state without keeping per-delivery state. Platforms **SHOULD** deduplicate on `Webhook-Id`, which short-circuits retries and separates events that share a `Webhook-Timestamp`, whose resolution is one second.
+
+Businesses **MUST** send retries with the original `Webhook-Id` and `Webhook-Timestamp`: a retry redelivers the same event, and the deduplication and ordering above rely on both values staying constant.
+
 **Example Webhook Request:**
 
 ```http
@@ -19434,17 +19504,19 @@ POST /webhooks/ucp/orders HTTP/1.1
 Host: platform.example.com
 Content-Type: application/json
 UCP-Agent: profile="https://merchant.example/.well-known/ucp"
+Webhook-Timestamp: 1737000000
+Webhook-Id: 018f8c2a-7b3e-7c1d-9a2b-4e5f6a7b8c9d
 Content-Digest: sha-256=:X48E9q...:
-Signature-Input: sig1=("@method" "@authority" "@path" "content-digest" "content-type");keyid="merchant-2026"
-Signature: sig1=:MEUCIQDTxNq8h7LGHpvVZQp1iHkFp9+3N8Mxk2zH1wK4YuVN8w...:
+Signature-Input: sig1=("@method" "@authority" "@path" "ucp-agent" "content-digest" "content-type" "webhook-id" "webhook-timestamp");keyid="merchant-2026"
+Signature: sig1=:6G4i8TS6oUkGrx8KnCFUpsSPwd74...:
 
-{"id":"order_abc123","event_id":"evt_123","created_time":"2026-01-15T12:00:00Z",...}
+{"id":"order_abc123",...}
 ```
 
 #### Signing (Business)
 
 1. Compute SHA-256 digest of the raw request body and set `Content-Digest` header
-1. Build signature base per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421)
+1. Build signature base per [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421), covering every component [REST Request Signing](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-signing) requires
 1. Sign using a key from `keys` in the business's UCP profile
 1. Set `Signature-Input` and `Signature` headers
 
@@ -19459,6 +19531,7 @@ See [Message Signatures - REST Request Signing](https://sakinaroufid.github.io/p
 1. Locate key in `keys` with matching `kid`
 1. Verify `Content-Digest` matches SHA-256 of raw body
 1. Reconstruct signature base and verify signature
+1. Confirm every component [REST Request Verification](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-verification) requires is among the signed components, and reject the delivery otherwise
 
 See [Message Signatures - REST Request Verification](https://sakinaroufid.github.io/pr-test/draft/specification/signatures/#rest-request-verification) for complete algorithm.
 
@@ -19489,6 +19562,7 @@ See [Message Signatures - Key Rotation](https://sakinaroufid.github.io/pr-test/d
 - **MUST** send "Order created" event with fully populated order entity
 - **MUST** send full order entity on updates (not incremental deltas)
 - **MUST** retry failed webhook deliveries
+- **MUST** send retries with the original `Webhook-Id` and `Webhook-Timestamp`; a retry redelivers the same event, and platforms deduplicate on `Webhook-Id` and order deliveries by `Webhook-Timestamp`
 
 ## Entities
 
@@ -21178,7 +21252,7 @@ The `allocations` array breaks down where each discount dollar landed, using JSO
 
 This enables platforms to explain exactly how much each discount contributed to each line item, even when multiple discounts stack.
 
-**Invariant:** Sum of `allocations[].amount` equals `applied_discount.amount`.
+**Invariant:** When `allocations` is present, the sum of `allocations[].amount` equals `applied_discount.amount`. `allocations` is optional; a discount that omits it is reported in `totals[]` as a single `discount` entry.
 
 ## Operations
 
@@ -21489,9 +21563,9 @@ This example shows both discount types: a per-item discount (20% off) allocated 
   "totals": [
     {"type": "subtotal", "display_text": "Subtotal", "amount": 4000},
     {"type": "items_discount", "display_text": "Item Discounts", "amount": -800},
-    {"type": "discount", "display_text": "Order Discounts", "amount": -599},
-    {"type": "fulfillment", "display_text": "Shipping", "amount": 0},
-    {"type": "total", "display_text": "Total", "amount": 2601}
+    {"type": "discount", "display_text": "Free shipping on orders over $30", "amount": -599},
+    {"type": "fulfillment", "display_text": "Shipping", "amount": 599},
+    {"type": "total", "display_text": "Total", "amount": 3200}
   ]
 }
 ```
@@ -27140,6 +27214,8 @@ Selecting a term can invalidate a selection previously accepted elsewhere in the
 
 This extension does not change how instruments are supplied. The Buyer's instruments fund the checkout under the selected term.
 
+Where the selected payment term is fully deferred and requires no upfront payment capture or instrument guarantee (e.g., cash payment upon arrival, or deferred invoicing where no tokens or instruments are submitted at checkout), no payment instruments need to be supplied. In this case, because `checkout.payment` is required on completion but `selected_term_id` is omitted on complete requests, the Platform **MUST** provide an empty payment object (`"payment": {}`) in the complete request.
+
 Checkout-specific handler and instrument eligibility is a **runtime result**. Profiles advertise broad support; the Business resolves that support against the Checkout context and any instruments already supplied, then returns the authoritative `ucp.payment_handlers` in the response. This covers cases a discovery-time predicate cannot express — a gift card whose balance is below the deposit, an issuer that will not support a delayed capture for this Business, a credential that expires before the balance comes due.
 
 A Platform therefore cannot pre-compute the effect of a choice, and **MUST** treat the set in each response as authoritative for that response alone. A handler that must be initialized with the amount and timing it will charge cannot be prepared before the term is agreed, and **MAY** cease to be offered once it is.
@@ -27405,6 +27481,14 @@ The deposit terms live in a policy that targets the term they apply to:
     }
   }
 ]
+```
+
+**Complete request — completing under fully deferred payment terms:**
+
+When completing a checkout with a selected payment term that requires no upfront payment capture or payment instruments, `selected_term_id` is omitted and the Platform sends an empty `payment` object:
+
+```json
+{}
 ```
 
 On completion, the accepted term travels to the Order, so the Buyer can still see that $900 is due at check-in. The other terms do not travel, and the deposit disclosure moves with the term it governs:
