@@ -86,6 +86,9 @@ jobs:
       - name: Run schema table macro tests
         run: uv run python scripts/test_schema_tables.py
 
+      - name: Run REST/MCP binding structure tests
+        run: uv run python scripts/test_rest_bindings.py
+
   build_and_verify_main:
     needs: lint
     runs-on: ubuntu-latest

@@ -72,6 +72,27 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "No checkout session was created. The UCP envelope reports the business outcome in `messages` (`ucp.status: \"error\"`).",
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/signature"
+              },
+              "Signature-Input": {
+                "$ref": "#/components/headers/signature_input"
+              },
+              "Content-Digest": {
+                "$ref": "#/components/headers/content_digest"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../../schemas/common/types/error_response.json"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Checkout session created",
             "headers": {
@@ -88,7 +109,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/checkout_response"
+                  "$ref": "#/components/schemas/checkout"
                 }
               }
             }
@@ -424,6 +445,27 @@
           }
         },
         "responses": {
+          "200": {
+            "description": "No cart was created. The UCP envelope reports the business outcome in `messages` (`ucp.status: \"error\"`).",
+            "headers": {
+              "Signature": {
+                "$ref": "#/components/headers/signature"
+              },
+              "Signature-Input": {
+                "$ref": "#/components/headers/signature_input"
+              },
+              "Content-Digest": {
+                "$ref": "#/components/headers/content_digest"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "../../schemas/common/types/error_response.json"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Cart created",
             "headers": {
@@ -433,7 +475,7 @@
             },
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/cart_response" }
+                "schema": { "$ref": "#/components/schemas/cart" }
               }
             }
           }

@@ -55,7 +55,7 @@ repos:
         entry: uv run --frozen python scripts/test_schema_tables.py
         language: system
         pass_filenames: false
-        files: ^(main\.py|scripts/test_schema_tables\.py|source/schemas/ucp\.json|docs/specification/reference\.md)$
+        files: ^(main\.py|scripts/test_schema_tables\.py|source/schemas/ucp\.json|source/services/.*\.openapi\.json|docs/specification/reference\.md)$
         stages: [pre-commit, pre-push]
       - id: check-links-tests
         name: Link checker unit tests
@@ -63,6 +63,13 @@ repos:
         language: system
         pass_filenames: false
         files: ^scripts/(check_links|test_check_links)\.py$
+        stages: [pre-commit, pre-push]
+      - id: rest-bindings-tests
+        name: REST/MCP binding structure tests
+        entry: uv run --frozen python scripts/test_rest_bindings.py
+        language: system
+        pass_filenames: false
+        files: ^(source/services/|scripts/test_rest_bindings\.py$)
         stages: [pre-commit, pre-push]
   - repo: https://github.com/streetsidesoftware/cspell-cli
     rev: v9.3.3
