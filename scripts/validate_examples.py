@@ -87,7 +87,10 @@ Layer 3 — Semantic interpretation. Operates on the parsed tree:
     open map; a `oneOf`/`anyOf` node narrows to the branch matching
     the value's `const`/`enum` marker, or to the enclosing schema
     alone when ambiguous. `$ref: "#"` is a bundling recursion marker
-    and is not followed.
+    and is not followed. A required-key `anyOf` must have at least one
+    branch represented by authored keys before the scaffold merge.
+  - Empty objects only bypass body validation for unscoped read/cancel
+    requests, whose operations have no request body.
   - The merged payload is validated by `ucp-schema validate`.
   - Extension fields: if the payload carries a top-level field that
     the annotated capability does not declare but an extension
@@ -709,6 +712,39 @@ def _select_branch(schema: dict, value) -> dict | None:
   return winners[0] if len(winners) == 1 else None
 
 
+def _required_alternatives(
+  schema: dict, pinned: dict | None = None
+) -> list[list[set[str]]]:
+  """Collect the required-key `anyOf` groups a node imposes.
+
+  An operation-scoped `anyOf` states a choice between sources rather
+  than a flat requirement: Create Checkout takes `line_items` or
+  `cart_id`. Each group is the list of its branches' required sets, so
+  the caller can ask whether the authored keys satisfy any one branch.
+
+  The one layer `pinned` was selected from is left out. There the
+  value's `const`/`enum` marker already settled the branch and its
+  requirements are merged by name, so offering a sibling variant's
+  fields as an alternative would name an option the author never had.
+  Every other layer still imposes its choice, including a marker-pinned
+  `anyOf` nested under `allOf`, which branch selection does not reach.
+  """
+  groups = []
+  for layer in (schema, *schema.get("allOf", [])):
+    if not isinstance(layer, dict) or "anyOf" not in layer:
+      continue
+    branches = [b for b in layer["anyOf"] if b is not False]
+    if pinned is not None and any(branch is pinned for branch in branches):
+      continue
+    groups.append(
+      [
+        _compose(branch)[0] if isinstance(branch, dict) else set()
+        for branch in branches
+      ]
+    )
+  return groups
+
+
 def _items_schema(schema: dict) -> dict | None:
   """Find the array item schema, looking through allOf composition."""
   if not isinstance(schema, dict) or schema.get("$ref") == "#":
@@ -741,19 +777,35 @@ def check_coverage(example, schema: dict, path: str = "$") -> list[str]:
       props.update(branch_props)
       if members is None:
         members = branch_members
+    alternatives_groups = _required_alternatives(schema, branch)
 
     # Schemas without explicit "type" but with required fields,
-    # properties, or an open-map member schema are still objects.
+    # properties, an open-map member schema, or a required-key
+    # alternative are still objects.
     has_object_shape = (
       schema.get("type") == "object"
       or bool(required)
       or bool(props)
       or members is not None
+      or bool(alternatives_groups)
     )
     if has_object_shape:
-      missing = required - set(example.keys())
-      for field in sorted(missing):
+      present = set(example.keys())
+      for field in sorted(required - present):
         errors.append(f'{path}: missing required field "{field}"')
+
+      for alternatives in alternatives_groups:
+        # A branch without required keys imposes no authored-key coverage
+        # constraint (as in non-create operation projections).
+        if any(not required_keys for required_keys in alternatives):
+          continue
+        if not any(required_keys <= present for required_keys in alternatives):
+          choices = " or ".join(
+            "+".join(sorted(required_keys)) for required_keys in alternatives
+          )
+          errors.append(
+            f"{path}: missing required field alternative ({choices})"
+          )
 
       # Recurse into non-ellipsis fields
       for key, value in example.items():
@@ -1225,8 +1277,15 @@ def process_block(
       annotation,
     )
 
-  # Empty body — trivially valid (e.g. GET, cancel)
-  if example == {}:
+  # Read and cancel requests have no body. Keep their authored empty-object
+  # notation lightweight, but never bypass an explicitly selected shape.
+  if (
+    example == {}
+    and direction == "request"
+    and op in ("read", "cancel")
+    and schema_def is None
+    and target_path is None
+  ):
     return Result(file, line, "ok", annotation=annotation)
 
   # Layer 3: resolve schema
