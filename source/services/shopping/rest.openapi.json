@@ -737,7 +737,7 @@
       "post": {
         "operationId": "order_event_webhook",
         "summary": "Order Event Webhook",
-        "description": "Merchant sends order lifecycle events to the platform's registered webhook URL. The platform provides the webhook URL during partner onboarding.",
+        "description": "Merchant sends order lifecycle events to the webhook URL the platform publishes in its profile under the order capability's config.webhook_url. The platform acknowledges with any 2xx status; see the Order specification's Delivery section for retry, replay, and ordering rules.",
         "parameters": [
           { "$ref": "#/components/parameters/signature" },
           { "$ref": "#/components/parameters/signature_input" },
