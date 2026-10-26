@@ -385,7 +385,8 @@ stateDiagram-v2
 
 * **`ready_for_complete`**: Checkout session has all necessary information
     and platform can finalize programmatically. No Action remains outstanding.
-    Platform can call Complete Checkout.
+    Platform can call Complete Checkout. See [Readiness](#readiness) for when
+    the Business returns this status.
 
 * **`complete_in_progress`**: The Complete Checkout request was accepted and the
     Business is processing the order. The response **MUST NOT** contain `order`.
@@ -397,6 +398,35 @@ stateDiagram-v2
 
 * **`canceled`**: Checkout session is invalid or expired. Platform should
     start a new checkout session if needed. No Action remains outstanding.
+
+#### Readiness
+
+A Checkout is **ready** when the Business holds every input it requires to
+place the order other than the `payment` that the Complete Checkout request
+itself supplies, no Action is outstanding, and no error Message with
+`severity` `recoverable`, `requires_buyer_input`, or `requires_buyer_review`
+is outstanding. Warning and info Messages do not affect readiness.
+
+The Business decides readiness and reports it through `status`:
+
+* The Business **MUST** return `ready_for_complete` when the Checkout is
+    ready.
+* The Business **MUST NOT** return `ready_for_complete` when it would reject a
+    Complete Checkout request for missing information or an outstanding
+    Action.
+* When returning `incomplete`, the Business **SHOULD** identify what is
+    needed through at least one error Message with `severity: recoverable` or
+    an outstanding Action, so the Platform can resolve it through Update
+    Checkout. (`requires_escalation` already requires a `requires_*`
+    Message; see [Business](#business).)
+
+`ready_for_complete` describes the Checkout as last evaluated; it is not a
+reservation. Inventory, pricing, and eligibility are evaluated again at
+completion, and a Complete Checkout request can still be rejected for a
+condition that arises then (see [Complete Checkout](#complete-checkout)). A
+Platform **MUST NOT** rely on submitting Complete Checkout to discover whether
+information is missing: it learns that from `status` and `messages`, without
+sending a payment credential.
 
 ### Actions
 
@@ -1003,6 +1033,8 @@ custom scopes are defined in [Identity Linking — Scopes](../../common/identity
 * **MAY** provide agent context when the platform indicates that the request
     was done by an agent.
 * **MUST** use `continue_url` when checkout status is `requires_escalation`.
+* **SHOULD NOT** submit Complete Checkout before the checkout reports
+    `ready_for_complete`. See [Readiness](#readiness).
 * **MAY** use `continue_url` to hand off to business UI in other situations.
 * When performing handoff, **SHOULD** prefer business-provided
     `continue_url` over platform-constructed checkout permalinks.
@@ -1018,6 +1050,12 @@ custom scopes are defined in [Identity Linking — Scopes](../../common/identity
     `requires_buyer_input` or `requires_buyer_review` when returning
     `status` = `requires_escalation`.
 * **SHOULD** provide `continue_url` in all non-terminal checkout responses.
+* **MUST** return `ready_for_complete` when, and only when, the checkout is
+    ready for completion. See [Readiness](#readiness).
+* **MUST NOT** place an order or capture payment for a Complete Checkout
+    request when the checkout is not ready; return the current checkout with
+    the Messages or Actions that identify what is needed. See
+    [Complete Checkout](#complete-checkout).
 * After a checkout session reaches the state "completed", it is considered
     immutable.
 
@@ -1101,6 +1139,21 @@ Update Checkout is not permitted; see
 This is the final checkout placement call. To be invoked when the user has
 committed to pay and place an order for the chosen items. Complete Checkout
 completes checkout and places the order from `ready_for_complete`.
+
+**Precondition.** The Platform **SHOULD NOT** submit Complete Checkout unless
+the most recent Checkout it received carries `status: ready_for_complete` (see
+[Readiness](#readiness)). The Business **MUST** evaluate readiness again when
+it receives the request, because the Checkout may have changed since the
+status was last reported. If the Checkout is not ready — information is
+missing, an Action is outstanding, or a condition such as inventory, pricing,
+or eligibility has changed — the Business **MUST NOT** place the order or
+capture payment, and **MUST** return the current Checkout with
+`status: incomplete`, or `requires_escalation` with `continue_url` when Buyer
+input is required, together with the Messages or Actions that identify what is
+needed. Such a response is a rejected Complete Checkout, not an accepted
+completion: `complete_in_progress` and `completed` are reserved for accepted
+requests, and a later Complete Checkout request is a new operation under the
+idempotency rules below.
 
 The response is the checkout object:
 

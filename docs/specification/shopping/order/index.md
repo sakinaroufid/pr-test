@@ -682,19 +682,25 @@ payload is the same **current-state snapshot** described in
 
 ### Order Event Webhook
 
-Businesses POST order events to a webhook URL provided by the platform
-during partner onboarding. The URL format is platform-specific.
+Businesses POST order events to the webhook URL the platform publishes in
+its profile (see [Webhook URL Configuration](#webhook-url-configuration)).
+The URL format is platform-specific.
 
-Headers follow **[Standard Webhooks](https://www.standardwebhooks.com/){ target="_blank" }**;
-except for request signing, which follows [RFC 9421](https://www.rfc-editor.org/rfc/rfc9421).
-See [Message Signatures](../../signatures.md) for more details.
+The header names follow
+**[Standard Webhooks](https://www.standardwebhooks.com/){ target="_blank" }**.
+Their semantics do not: `Webhook-Timestamp` is the event time and stays
+constant across retries, where Standard Webhooks carries the attempt time
+(see [Delivery](#delivery)). Request signing follows
+[RFC 9421](https://www.rfc-editor.org/rfc/rfc9421) rather than the Standard
+Webhooks signature scheme. See [Message Signatures](../../signatures.md) for
+more details.
 
 **Required Headers:**
 
-| Header               | Description                                 |
-| :------------------- | :------------------------------------------ |
-| `Webhook-Timestamp`  | Event occurrence timestamp (unix)           |
-| `Webhook-Id`         | Event identifier; stable across retries     |
+| Header               | Description                                                   |
+| :------------------- | :------------------------------------------------------------ |
+| `Webhook-Timestamp`  | Event occurrence time (unix seconds); constant across retries |
+| `Webhook-Id`         | Event identifier (UUID); constant across retries              |
 
 {{ method_fields('order_event_webhook', 'shopping/rest.openapi.json', 'shopping/order') }}
 
@@ -724,6 +730,104 @@ platform's profile and uses it to send order lifecycle events.
 }
 ```
 
+### Delivery
+
+An order event is one delivery attempt or more of the same signed message to
+the platform's webhook URL. The rules below define the endpoint the business
+may send to, what counts as acknowledgement, how long and how often the
+business retries, and how the platform bounds replay and applies deliveries in
+order. One constant ties them together:
+
+| Constant        | Value     | Role                                                                                                              |
+| :-------------- | :-------- | :---------------------------------------------------------------------------------------------------------------- |
+| Delivery window | 72 hours  | Measured from `Webhook-Timestamp`. Retries stop, replay is rejected, and `Webhook-Id` retention ends at this age. |
+| Future skew     | 5 minutes | Maximum amount a `Webhook-Timestamp` may lie ahead of the receiver's clock.                                       |
+
+#### Endpoint
+
+The business resolves `webhook_url` from the profile of the platform that
+completed the checkout — the profile named by the `UCP-Agent` header on the
+Complete Checkout request — under the caching rules in
+[Fetching](../../overview/index.md#fetching). A platform changes its webhook URL
+by publishing a new profile; the business applies the change to deliveries
+that start after it re-reads the profile.
+
+`webhook_url` is platform-supplied input that the business connects to, so the
+URL rules in [Fetching](../../overview/index.md#fetching) apply to every
+delivery attempt as they apply to identity resolution:
+
+* The business **MUST** reject a `webhook_url` that is not `https`.
+* The business **MUST NOT** follow a redirect (`3xx`). A redirect response is
+  a failed attempt; the platform publishes a new URL instead.
+* The business **MUST** reject a URL whose resolved address is a special-use
+  address ([RFC 6890](https://www.rfc-editor.org/rfc/rfc6890)) and **SHOULD**
+  validate the resolved address on every connection.
+* The business **MUST NOT** deliver to a platform it no longer recognizes,
+  and **MUST NOT** deliver order state for an order to a platform other than
+  the one that completed its checkout.
+
+#### Acknowledgement and failure
+
+A delivery attempt succeeds when the platform responds with any `2xx` status.
+The response body, when present, is the UCP envelope shown in the operation
+definition above. Every other outcome is a failed attempt: a `3xx`, `4xx`, or
+`5xx` response, a connection failure, or a timeout. Businesses **SHOULD** bound
+each attempt with a response timeout of no more than 30 seconds, and platforms
+**MUST** acknowledge within that bound and process the event afterwards.
+
+Two responses carry additional meaning:
+
+* `410 Gone` means the platform has withdrawn the URL. The business **MUST**
+  stop delivering to it, including pending retries, and **MUST** re-read the
+  platform profile before delivering again.
+* `429 Too Many Requests` and `503 Service Unavailable` mean the platform is
+  throttling. The business **MUST** honor a `Retry-After` header when present
+  and otherwise back off as below.
+
+#### Retries
+
+The business **MUST** retry a failed attempt with exponential backoff and
+jitter until the attempt succeeds or the delivery window expires, and **MUST
+NOT** attempt delivery of an event after its delivery window expires. Every
+attempt re-sends the same event with the original `Webhook-Id`,
+`Webhook-Timestamp`, and body; a retry is a redelivery, not a new event, and a
+retry **MAY** carry a fresh signature.
+
+When the window expires without acknowledgement, the business **MUST** stop
+retrying that event, **SHOULD** record the failure for operator attention, and
+continues to deliver later events for the order. Because every delivery is a
+full current-state snapshot, the next acknowledged delivery brings the platform
+up to date; a platform that observes a gap **SHOULD** reconcile through
+[Get Order](#get-order) rather than wait for a redelivery.
+
+#### Replay, deduplication, and ordering
+
+`Webhook-Timestamp` is the event time, so a retry can legitimately arrive hours
+after it. A platform **MUST NOT** apply an attempt-time freshness tolerance to
+it, such as the few-minute window Standard Webhooks verifiers apply, or every
+late retry is rejected. Replay is bounded instead by the delivery window and
+deduplication:
+
+* The platform **MUST** reject a delivery whose `Webhook-Timestamp` is older
+  than the delivery window or more than the future skew ahead of its clock,
+  before any state change and after signature verification.
+* The platform **MUST** retain each accepted `Webhook-Id` for at least the
+  delivery window and **MUST NOT** apply a delivery whose `Webhook-Id` it has
+  already applied. It **SHOULD** still acknowledge the duplicate with `2xx` so
+  the business stops retrying.
+* Together these guarantee that a captured delivery can be replayed only inside
+  the window, where its `Webhook-Id` is still retained and the replay is
+  deduplicated.
+
+Deliveries for one order **MUST** be applied in `Webhook-Timestamp` order: a
+platform **MUST NOT** apply a delivery whose `Webhook-Timestamp` is earlier
+than that of the latest delivery it has applied for the same order, since a
+later snapshot already supersedes it. `Webhook-Timestamp` has one-second
+resolution, so two distinct events for one order can share a value; a platform
+that receives such a pair **SHOULD** reconcile through [Get Order](#get-order)
+rather than guess which is newer. Businesses **SHOULD** avoid emitting two
+events for one order within the same second.
+
 ### Webhook Signature Verification
 
 Webhook payloads **MUST** be signed by the business and verified by the platform
@@ -748,16 +852,12 @@ signature to cover them, and
 platforms to reject a delivery whose signature omits either. Webhooks carry no
 `Idempotency-Key`, so these two headers are the only per-event replay signal.
 
-An order webhook carries the full current state of the order rather than a delta, so
-a platform that applies deliveries in `Webhook-Timestamp` order, or reconciles
-through `GET /orders/{id}`, converges on the current state without keeping
-per-delivery state. Platforms **SHOULD** deduplicate on `Webhook-Id`, which
-short-circuits retries and separates events that share a `Webhook-Timestamp`, whose
-resolution is one second.
-
-Businesses **MUST** send retries with the original `Webhook-Id` and
-`Webhook-Timestamp`: a retry redelivers the same event, and the deduplication
-and ordering above rely on both values staying constant.
+An order webhook carries the full current state of the order rather than a
+delta, so a platform that applies deliveries in `Webhook-Timestamp` order, or
+reconciles through `GET /orders/{id}`, converges on the current state without
+keeping per-delivery state. The replay bound, deduplication, and ordering rules
+that rely on `Webhook-Id` and `Webhook-Timestamp` staying constant across
+retries are defined in [Delivery](#delivery).
 
 **Example Webhook Request:**
 
@@ -826,6 +926,13 @@ zero-downtime key rotation procedures.
 
 * **MUST** respond quickly with a 2xx HTTP status code to acknowledge webhook
   receipt; process events asynchronously after responding
+* **MUST** publish an `https` `webhook_url` and respond `410 Gone` at a URL it
+  has withdrawn
+* **MUST** reject deliveries outside the delivery window, deduplicate on
+  `Webhook-Id` for at least that window, and apply deliveries for an order in
+  `Webhook-Timestamp` order. See [Delivery](#delivery).
+* **MUST NOT** apply an attempt-time freshness tolerance to
+  `Webhook-Timestamp`
 
 **Business:**
 
@@ -835,10 +942,17 @@ zero-downtime key rotation procedures.
   (`Signature`, `Signature-Input`, `Content-Digest`)
 * **MUST** send "Order created" event with fully populated order entity
 * **MUST** send full order entity on updates (not incremental deltas)
-* **MUST** retry failed webhook deliveries
+* **MUST** deliver only to an `https` `webhook_url` read from the completing
+  platform's profile, without following redirects or connecting to
+  special-use addresses. See [Endpoint](#endpoint).
+* **MUST** retry failed deliveries with exponential backoff and jitter until
+  acknowledged or the delivery window expires, and **MUST NOT** deliver an
+  event after its window expires. See [Retries](#retries).
 * **MUST** send retries with the original `Webhook-Id` and `Webhook-Timestamp`;
   a retry redelivers the same event, and platforms deduplicate on `Webhook-Id`
   and order deliveries by `Webhook-Timestamp`
+* **MUST** stop delivering to a URL that returned `410 Gone` and honor
+  `Retry-After` on `429` and `503`
 
 ## Entities
 
