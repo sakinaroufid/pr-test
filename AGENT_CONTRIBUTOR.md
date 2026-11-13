@@ -12,6 +12,7 @@ You are an AI agent contributing directly to this repository (`Universal-Commerc
 Adhere strictly to the following parameters when editing the repository:
 
 * **Schema Source of Truth:** Edit JSON schemas only inside the `source/` directory (see `docs/documentation/schema-authoring.md`). Always preserve `ucp_*` annotations.
+* **Schema Transitions (Breaking Changes & Deprecations):** Rather than changing field visibility (`required`, `optional`, `omit`) or removing a field directly, stage breaking field changes and deprecations inside `ucp_request` / `ucp_response` using a [`transition` annotation](https://github.com/Universal-Commerce-Protocol/ucp-schema#schema-transitions) (`{"transition": {"from": "<current>", "to": "<target>", "description": "<reason>"}}`).
 * **PR Titles & Commit Messages:** Follow Conventional Commits (e.g., `feat: add transaction extension`, `docs: update guide`). Use `!` for breaking changes (e.g., `feat!: update profile schema`).
 * **Documentation Navigation:** Sync any MkDocs navigation additions (`mkdocs.yml` `nav`) with `plugins.llmstxt.sections` so new pages remain discoverable via `llms.txt`.
 * **JSON Examples:** Annotate every fenced `json` code block in `docs/**/*.md` with `<!-- ucp:example schema=... -->` or `<!-- ucp:example skip reason="..." -->`.
@@ -34,7 +35,8 @@ Validate your changes locally using these commands before considering a task com
 * **Validate Payloads:** `ucp-schema validate --schema source/schemas/<domain>/<schema_name>.json --op <operation> [--request|--response] <path_to_payload.json>` (validates a sample payload against a schema).
 * **Run Pre-Commit Checks:** `pre-commit run --all-files`
 * **Execute Local Super-Linter:** `./scripts/super_linter_local.py` (requires `docker` or `podman`).
-* **Run Script Unit Tests:** `uv run python scripts/test_validate_examples.py`, `uv run python scripts/test_schema_tables.py`, and `uv run python scripts/test_check_links.py` (when modifying `main.py` or `scripts/`).
+* **Run Script Unit Tests:** `uv run python scripts/test_validate_examples.py`, `uv run python scripts/test_schema_tables.py`, `uv run python scripts/test_check_links.py`, and `uv run python scripts/test_ask_index.py` (when modifying `main.py` or `scripts/`).
+* **Ask AI Assistant:** The docs build also emits `ask-index.json` (via `ask_index_hook.py`) for the "Ask AI" widget; the backend lives in `ask/` (`npm run typecheck && npm test`). See `ask/README.md`.
 
 ### Documentation (MkDocs)
 
