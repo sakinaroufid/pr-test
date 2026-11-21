@@ -773,9 +773,14 @@ Follow-up calls after initial `fulfillment` data to update selection.
 
 ### Complete Checkout
 
-If businesses have specific logic to enforce field existence in `buyer` and
-addresses (i.e. `fulfillment_address`, `billing_address`), this is the right
-place to set these expectations via `messages`.
+Requirements on `buyer` and addresses are surfaced through `messages` on
+Create and Update Checkout responses, before the checkout reports
+`ready_for_complete` (see [Readiness](index.md#readiness)). Complete Checkout
+evaluates readiness again and can still reject the request for a condition
+that arises at completion, such as an inventory, pricing, or eligibility
+change; a rejected completion returns HTTP 200 with the checkout, its
+`status`, and the `messages` that identify what is needed, as shown under
+[Business Outcomes](#business-outcomes).
 
 The response is the Checkout object; the example below shows the synchronous
 `completed` case. See core [Complete Checkout](index.md#complete-checkout)

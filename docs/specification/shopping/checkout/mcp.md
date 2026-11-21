@@ -232,7 +232,7 @@ Maps to the [Create Checkout](index.md#create-checkout) operation.
             }
           },
           "id": "checkout_abc123",
-          "status": "incomplete",
+          "status": "ready_for_complete",
           "buyer": {
             "email": "jane.doe@example.com",
             "first_name": "Jane",
@@ -491,7 +491,7 @@ unchanged and return the current Checkout with a recoverable error Message.
             }
           },
           "id": "checkout_abc123",
-          "status": "incomplete",
+          "status": "ready_for_complete",
           "buyer": {
             "email": "jane.doe@example.com",
             "first_name": "Jane",
