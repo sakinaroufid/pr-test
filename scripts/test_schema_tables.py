@@ -1766,6 +1766,41 @@ def test_base_def_inherits_root_title_except_ucp(macros: dict) -> None:
 # -----------------------------------------------------------
 
 
+def test_create_operation_renders_response_table(macros: dict) -> None:
+  """A create operation's Response table lists the created resource's fields.
+
+  The operation declares 201 for the resource and 200 for the error envelope;
+  the table must come from the 201, not render empty or show the envelope.
+  """
+  table = macros["method_fields"](
+    "create_checkout",
+    "shopping/rest.openapi.json",
+    "shopping/checkout",
+    io_type="response",
+  )
+  _check(
+    "create_operation_response_table_has_resource_fields",
+    _type_cell(table, "status") == "string"
+    and _type_cell(table, "id") == "string",
+    f"status={_type_cell(table, 'status')!r} id={_type_cell(table, 'id')!r}",
+  )
+
+
+def test_create_operation_renders_response_headers(macros: dict) -> None:
+  """A page built from a create operation lists the signed response headers."""
+  table = macros["header_fields"](
+    "create_checkout", "shopping/rest.openapi.json"
+  )
+  _check(
+    "create_operation_response_headers_listed",
+    "Response Headers" in table
+    and all(
+      h in table for h in ("Signature", "Signature-Input", "Content-Digest")
+    ),
+    "response header table missing or incomplete",
+  )
+
+
 def main() -> int:
   """Run all tests and report. Exit 0 on pass, 1 on failure."""
   print("Running schema and header table tests...\n")
@@ -1799,6 +1834,8 @@ def main() -> int:
   test_inline_object_all_of_merge_precedence(macros)
   test_no_header_render_emits_no_dangling_inline_links(internals)
   test_base_def_inherits_root_title_except_ucp(macros)
+  test_create_operation_renders_response_table(macros)
+  test_create_operation_renders_response_headers(macros)
   return _report()
 
 

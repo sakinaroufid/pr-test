@@ -74,6 +74,22 @@ import unicodedata
 # --- CONFIGURATION ---
 # Base directories for schema resolution.
 OPENAPI_DIR = Path("source/services")
+
+# The response that documents an operation's success. A create operation
+# declares 201 for the created resource and 200 for the error envelope it
+# returns when nothing was created, so 201 is preferred where present.
+SUCCESS_RESPONSE_CODES = ("201", "200")
+
+
+def _success_response(operation: dict) -> dict:
+  """Return the operation's success Response Object, or an empty dict."""
+  responses = operation.get("responses", {})
+  for code in SUCCESS_RESPONSE_CODES:
+    if code in responses:
+      return responses[code]
+  return {}
+
+
 SCHEMAS_DIR = Path("source/schemas")
 HANDLERS_GOOGLE_PAY_DIR = Path("source/handlers/google_pay")
 COMMON_SCHEMAS_DIR = SCHEMAS_DIR / "common"
@@ -2965,13 +2981,8 @@ def define_env(env):
     all_parameters = path_parameters + operation.get("parameters", [])
 
     # 4. Extract Response Schema.
-    res_schema = {}
-    responses = operation.get("responses", {})
-    for code in ("200", "201"):
-      if code in responses:
-        res_content = responses[code].get("content", {})
-        res_schema = res_content.get("application/json", {}).get("schema", {})
-        break
+    res_content = _success_response(operation).get("content", {})
+    res_schema = res_content.get("application/json", {}).get("schema", {})
 
     # Targeted reference resolution: only resolve the top-level ref and
     # 'allOf' children (e.g. "complete_checkout") without expanding every
@@ -3162,10 +3173,8 @@ def define_env(env):
       ]
     )
 
-    # 3. Extract Response Headers (Assumes 200 OK).
-    res_headers_defs = (
-      operation.get("responses", {}).get("200", {}).get("headers", {})
-    )
+    # 3. Extract Response Headers from the operation's success response.
+    res_headers_defs = _success_response(operation).get("headers", {})
     res_headers = []
     for name, header in res_headers_defs.items():
       if "$ref" in header:
