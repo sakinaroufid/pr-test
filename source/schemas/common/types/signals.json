@@ -16,6 +16,12 @@
     "dev.ucp.user_agent": {
       "type": "string",
       "description": "Client's HTTP User-Agent header or equivalent."
+    },
+    "dev.ucp.interaction_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Opaque, platform-generated identifier for the buyer interaction (e.g., a single conversation or shopping task) in which the request was made. The same value is sent on every catalog, cart, and checkout request the platform makes to a business during that interaction, so the business can evaluate the requests as one sequence for rate limiting and abuse prevention. MUST NOT encode or be derived from buyer identity."
     }
   },
   "additionalProperties": true
