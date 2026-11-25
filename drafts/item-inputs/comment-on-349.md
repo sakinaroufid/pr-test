@@ -3,22 +3,22 @@
 <!-- cspell:ignore hemanth zhang honghao wsbrunson pjordan -->
 
 > Post on <https://github.com/Universal-Commerce-Protocol/ucp/issues/349>
-> ("Line items have no field for buyer notes"). Post this and wait for
-> replies before filing the proposal, so it adds to the work already done
-> here and does not get ahead of anyone.
+> ("Line items have no field for buyer notes"). Post this when filing the
+> proposal, so the people who worked on this before hear about it from
+> you.
 
 ---
 
 @hemanth, @zhang-honghao: I have been working on the per-item side of
-this problem and want to check with both of you before I file anything.
+this problem and am filing an Enhancement Proposal for it. I wanted both
+of you to hear it here first, since it builds on your work.
 
 @hemanth, this issue and your two pull requests (#402, #607) made the
 case that buyer input belongs on the line item. What I have builds on
 that. @zhang-honghao, #915 added the idea that the business declares what
-it needs and marks it required, and the maintainers asked for a new
-Enhancement Proposal in the direction set out there. Are you writing
-it? If you are, I would like to contribute to yours. I do not want to open
-a second one beside it.
+it needs and marks it required. Both are credited in the proposal. If you
+are writing the Enhancement Proposal the maintainers asked for on #915,
+tell me and I will reference it from mine.
 
 What I have is narrower than #915. It covers input that belongs to one
 line item and that the product cannot be made without: engraving text, a
@@ -40,13 +40,9 @@ vocabulary. Checkout-level fields such as gift messages and delivery
 instructions are outside it and stay with the #915 direction.
 
 I have draft schemas and a specification page with validated examples.
-Three questions:
+Two questions:
 
-1. @zhang-honghao, would you prefer to fold this into your proposal, or
-   have it filed as a companion that references yours?
-2. @hemanth, would you like to co-author? The line-item approach started
-   with this issue.
-3. Would the Tech Council prefer one proposal covering both scopes, or
-   two?
-
-I will hold off filing until I hear back here.
+1. @hemanth, @zhang-honghao, would either of you like to co-author or
+   review? You know the earlier discussion better than anyone.
+2. Would the Tech Council prefer the checkout-level fields in the same
+   proposal, or kept separate?
