@@ -1,6 +1,6 @@
 # [Proposal]: Item Inputs — buyer-supplied input on a line item (engraving, monogram, custom text)
 
-<!-- cspell:ignore wsbrunson karangoel pjordan jingyli ihoosain gsmith raginpirate Okafor Amara Zainab Trailhead -->
+<!-- cspell:ignore hemanth zhang honghao Saif Chahed wsbrunson karangoel pjordan jingyli ihoosain gsmith raginpirate Okafor Amara Zainab Trailhead -->
 
 > Draft, not yet filed. Intended as an Enhancement Proposal issue on
 > `Universal-Commerce-Protocol/ucp`. It picks up the per-item half of the
@@ -59,6 +59,26 @@ what those threads established.
 | #188 (open) | Ancillaries with text/selection input | No activity |
 | #449, #508 | Gift extension; messages explicitly out of scope | Stale |
 | Discussion #27 | "Personalized Products on Shopify" | Answered with "use embedded checkout" |
+
+### What this proposal takes from that work
+
+This proposal is built on the earlier threads and credits them:
+
+- **The line item as the place for buyer input** comes from #349 and its
+  two pull requests by @hemanth.
+- **The business declaring what it needs, and marking it required,**
+  comes from #915 by @zhang-honghao.
+- **The four input types** (text, choice, boolean, date) come from
+  Shopify's #481 by @SaifBenChahed, and are reused so the two scopes can
+  share one vocabulary.
+- **The design constraints** in the list below come from the reviewers of
+  those pull requests.
+
+What it adds is narrower: declaring the questions per product in the
+catalog so they are known before checkout, carrying the answers from the
+first request, returning specific errors, and keeping the answers on the
+order. Checkout-level fields stay with the #915 direction. The authors
+above are invited to co-author.
 
 Points raised in review of those threads that this proposal is designed to
 answer:
