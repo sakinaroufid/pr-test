@@ -283,19 +283,9 @@ to the kind of agent they were trying to avoid.
 `dev.ucp.shopping.checkout` and `dev.ucp.shopping.order`, following the
 composition pattern of `dev.ucp.shopping.purchase_options`.
 
-Both parties advertise the input types they support in `config`. The
-active set is the intersection, as proposed in #481:
-
-```json
-{
-  "dev.ucp.shopping.item_inputs": [
-    {
-      "version": "2026-xx-xx",
-      "config": { "supported_types": ["text", "choice", "boolean", "date"] }
-    }
-  ]
-}
-```
+A Platform that advertises the extension supports all four well-known
+input types. There is no per-type negotiation in this version; a new
+type would arrive with a new version of the extension.
 
 Because the extension is in the `dev.ucp` namespace and inputs are
 described as data rather than as merchant schemas, capability
@@ -326,7 +316,6 @@ variants repeats the declaration.
       "id": "engraving_font",
       "label": "Engraving font",
       "required": false,
-      "depends_on": "engraving_text",
       "input": {
         "type": "choice",
         "options": [
@@ -349,7 +338,6 @@ Fields of an input declaration:
 | `required` | boolean | If `true`, the line cannot be purchased without a value. |
 | `input` | object | Type and constraints. See below. |
 | `price` | amount | Optional. Indicative extra charge per unit when a value is supplied. The line's totals are authoritative. |
-| `depends_on` | string | Optional. `id` of another input; this one applies only when that one has a value. |
 
 Input types reuse the vocabulary reviewed in #481:
 
@@ -447,12 +435,12 @@ negotiated capability (review point 8).
 
 ### Order
 
-An order line item gains a read-only `inputs` array recording what was
+An order line item gains a read-only `input_values` array recording what was
 supplied, as it stood at checkout (review point 4):
 
 ```json
 {
-  "inputs": [
+  "input_values": [
     {
       "id": "engraving_text",
       "label": "Case back engraving",
@@ -536,8 +524,9 @@ Review point 7.
 2. Variant-level or product-level declaration, or both?
 3. Should this share a schema file for input types with the checkout-level
    fields work, or should one EP cover both scopes?
-4. Is `depends_on` worth including, or should dependent rules be left to
-   validation errors in version 1?
+4. Should an input be able to depend on another (a font applies only
+   when engraving text is supplied)? The draft schemas leave this out and
+   rely on the Business's validation.
 5. Should a plain line `note`, as in Food Checkout, be added to Shopping
    alongside this for unstructured requests?
 
