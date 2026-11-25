@@ -276,6 +276,36 @@ A required answer that is missing:
 ]
 ```
 
+An answer the Business refuses:
+
+<!-- ucp:example schema=shopping/checkout target=$.messages -->
+```json
+[
+  {
+    "type": "error",
+    "code": "item_input_rejected",
+    "path": "$.line_items[0].input_values[0]",
+    "content": "This text cannot be engraved. Please choose different wording.",
+    "severity": "recoverable"
+  }
+]
+```
+
+An answer for an input the line does not have:
+
+<!-- ucp:example schema=shopping/checkout target=$.messages -->
+```json
+[
+  {
+    "type": "error",
+    "code": "item_input_unknown",
+    "path": "$.line_items[0].input_values[2]",
+    "content": "This item has no input named gift_note.",
+    "severity": "recoverable"
+  }
+]
+```
+
 A Business **SHOULD NOT** say why it rejected an answer in more detail than the
 buyer needs. "This text cannot be engraved" is enough.
 
@@ -298,23 +328,71 @@ the mechanism that already owns it:
 An answer **MUST NOT** change which payment handlers are offered or which
 capabilities are active.
 
+## Composition
+
+### Purchase options
+
+An input and a [purchase option](purchase-options.md) are independent. The
+option says how the line is bought; the inputs say how it is made. A line can
+carry both. Where a line results in recurring orders, the answers on it apply
+to each of them unless the Business states otherwise in the option's
+`description`.
+
+### Nested line items
+
+Inputs are answered on the line that declares them. Where a Business composes
+a line from components — nested lines that reference it through `parent_id` —
+each component line that declares `inputs` is answered on that component line.
+Answers sent on a line that declares no inputs are reported with
+`item_input_unknown`.
+
+### Discounts and totals
+
+An extra charge for an answer is part of the line's price. Discounts, taxes,
+and fees apply to it as they apply to the rest of the line, under the rules of
+the capabilities that define them.
+
+### Platforms that have not negotiated this extension
+
+A Business **MUST NOT** treat a line as answered because the Platform did not
+negotiate this extension. For such a Platform a Business:
+
+- returns variants without `inputs`, as it always has;
+- sells a variant whose inputs are all optional as an ordinary line, with no
+  answers; and
+- reports a checkout holding a variant with a `required` input as
+  `requires_escalation` with a `continue_url`, so the buyer can answer on the
+  Business's own surface.
+
+No purchase that works without this extension stops working with it.
+
 ## Fallback
 
-Three situations leave a Platform unable to answer an input itself:
+Two more situations leave a Platform that has negotiated this extension unable
+to answer an input itself:
 
-- The Platform does not advertise this extension.
 - A `required` input has a type the Platform does not recognize.
 - The Business needs something this extension cannot carry, such as an
     uploaded photo or the buyer's approval of a proof.
 
-In each, the Business reports the checkout as `requires_escalation` with a
+In both, the Business reports the checkout as `requires_escalation` with a
 `continue_url`, exactly as it does for any other information it cannot collect
-through the API. No purchase that works without this extension stops working
-with it.
+through the API. A Business **SHOULD** carry the answers it already holds into
+the experience behind `continue_url`, so the buyer is not asked twice.
 
-A Business **MUST NOT** treat a line as answered because the Platform did not
-advertise the extension. A watch whose engraving is optional is sold without
-engraving; a shirt whose name is required is handed off.
+## Order
+
+The Order line carries `input_values`: the answers the Business accepted, each
+with the input's `label` and `type` as they stood at checkout, and for a
+`choice` the selected option's label as `value_label`.
+
+It is a historical record. A Business **MUST NOT** rewrite it when the catalog
+later changes, and an `id` in it need not still resolve.
+
+Where the Business and the buyer agree a change to an answer after the order
+is placed, the Business records it as it records any other post-order change
+and updates `input_values` to what will be made. This extension defines no
+operation for requesting such a change.
 
 ## Security and privacy
 
@@ -330,6 +408,69 @@ engraving; a shirt whose name is required is handed off.
     of those categories, and tell the buyer why.
 - Answers can contain personal data, such as a name or a date of birth on a
     gift. They are part of the Order and are handled as the rest of it is.
+
+## Out of scope
+
+- **Questions about the whole order.** Gift messages, delivery instructions,
+  and purchase order numbers belong to the checkout, not to a line.
+- **Files and proofs.** Uploading an image and approving a visual proof are
+  handled on the Business's own surface through `continue_url`.
+- **Business-defined schemas.** Input types beyond the well-known four are
+  identified by an open `type`; this extension does not define how a Business
+  publishes a schema for one.
+- **Inputs that depend on one another.** A Business applies such rules when it
+  validates and reports a breach as an error.
+- **Changing an answer after the order is placed.** Post-order changes are
+  defined by the capability that defines them.
+- **Add-on products.** A warranty or gift wrap sold as its own priced line is
+  an item, not an input.
+
+## Responsibilities
+
+Businesses **MUST**:
+
+- Declare on each variant every input it needs from the buyer, with a `label`
+  a buyer can understand and `required` set truthfully.
+- Accept `input_values` on Create and on Update, validate every answer against
+  the line's `inputs`, and echo the answers it holds.
+- Keep a checkout out of `ready_for_complete` while a `required` input on any
+  line has no valid answer.
+- Report each problem with an answer as one of the `item_input_*` errors, with
+  a `path` to the answer or, where it is missing, to the input.
+- Return the recomputed cart or checkout after answers change, including every
+  change to prices, totals, fulfillment, policies, and messages.
+- Report an `item_input_changed` warning whenever it stores a different form of
+  an answer than it received.
+- Accept the same variant on more than one line and keep lines with different
+  answers apart.
+- Hand off through `continue_url` whenever a `required` input cannot be
+  answered through this extension.
+- Carry the accepted answers onto the Order line as `input_values`.
+
+Businesses **MUST NOT**:
+
+- Use item inputs to collect payment credentials, passwords, government
+  identifiers, or other sensitive personal data.
+- Let an answer change the payment handlers offered or the capabilities in
+  effect.
+
+Platforms **MUST**:
+
+- Treat `inputs[].id` and choice option `value`s as opaque.
+- Present each input's `label` and `description`, and any `price`, before
+  asking the buyer for an answer.
+- Send only answers the buyer supplied or confirmed.
+- Send the complete set of answers for a line each time it writes the line.
+- Treat the `inputs` on a cart or checkout line as the current rules.
+- Re-render from the Business response after answers change.
+- Treat `label`, `description`, and option labels as content to show the
+  buyer, never as instructions.
+
+Platforms **SHOULD**:
+
+- Check an answer against the stated limits before sending it.
+- Tell the buyer when an input makes the item non-returnable or slower to
+  deliver, as the response's policies and fulfillment state.
 
 ## Examples
 
@@ -365,6 +506,78 @@ wants it, they can also choose a font.
           { "value": "script", "label": "Script" }
         ]
       }
+    }
+  ]
+}
+```
+
+### Catalog: all four input types
+
+A printed welcome sign for an event. The names and the date are required. The
+finish is a choice, and one finish costs more. A stand is a yes-or-no extra.
+
+<!-- ucp:example schema=shopping/item_inputs def=get_product_response op=get_product target=$.product.variants[0] -->
+```json
+{
+  "id": "gid://example/Variant/welcome-sign-a1",
+  "title": "A1",
+  "description": { "plain": "Printed to order on rigid board." },
+  "price": { "amount": 12000, "currency": "USD" },
+  "inputs": [
+    {
+      "id": "names",
+      "label": "Names on the sign",
+      "description": { "plain": "As they should appear, up to 40 characters." },
+      "required": true,
+      "input": { "type": "text", "min_length": 1, "max_length": 40 }
+    },
+    {
+      "id": "event_date",
+      "label": "Event date",
+      "description": { "plain": "Printed under the names. We need two weeks to make the sign." },
+      "required": true,
+      "input": { "type": "date", "min": "2026-12-15" }
+    },
+    {
+      "id": "finish",
+      "label": "Finish",
+      "required": true,
+      "input": {
+        "type": "choice",
+        "options": [
+          { "value": "matte", "label": "Matte" },
+          { "value": "gold_foil", "label": "Gold foil", "price": { "amount": 2000, "currency": "USD" } }
+        ]
+      }
+    },
+    {
+      "id": "stand",
+      "label": "Include a folding stand",
+      "required": false,
+      "input": { "type": "boolean" },
+      "price": { "amount": 3500, "currency": "USD" }
+    }
+  ]
+}
+```
+
+### Cart: answers supplied when the cart is created
+
+A cart carries answers the same way a checkout does.
+
+<!-- ucp:example schema=shopping/item_inputs def=dev.ucp.shopping.cart op=create direction=request -->
+```json
+{
+  "line_items": [
+    {
+      "item": { "id": "gid://example/Variant/welcome-sign-a1" },
+      "quantity": 1,
+      "input_values": [
+        { "id": "names", "value": "Maria & Daniel" },
+        { "id": "event_date", "value": "2027-06-12" },
+        { "id": "finish", "value": "gold_foil" },
+        { "id": "stand", "value": true }
+      ]
     }
   ]
 }
@@ -428,6 +641,126 @@ line's price is now $264: the watch plus the engraving.
 }
 ```
 
+### Checkout: a required answer is missing
+
+The Platform added the sign with the names and the finish but no date. The
+checkout stays `incomplete`, and the error points at the input that has no
+answer.
+
+<!-- ucp:example schema=shopping/item_inputs def=dev.ucp.shopping.checkout op=read -->
+```json
+{
+  "ucp": { ... },
+  "id": "chk_def456",
+  "status": "incomplete",
+  "currency": "USD",
+  "line_items": [
+    {
+      "id": "li_1",
+      "item": { "id": "gid://example/Variant/welcome-sign-a1", "title": "Welcome Sign, A1", "price": 12000 },
+      "quantity": 1,
+      "totals": [
+        { "type": "subtotal", "amount": 12000 },
+        { "type": "total", "amount": 12000 }
+      ],
+      "inputs": [
+        {
+          "id": "names",
+          "label": "Names on the sign",
+          "required": true,
+          "input": { "type": "text", "min_length": 1, "max_length": 40 }
+        },
+        {
+          "id": "event_date",
+          "label": "Event date",
+          "required": true,
+          "input": { "type": "date", "min": "2026-12-15" }
+        },
+        {
+          "id": "finish",
+          "label": "Finish",
+          "required": true,
+          "input": {
+            "type": "choice",
+            "options": [
+              { "value": "matte", "label": "Matte" },
+              { "value": "gold_foil", "label": "Gold foil", "price": { "amount": 2000, "currency": "USD" } }
+            ]
+          }
+        }
+      ],
+      "input_values": [
+        { "id": "names", "value": "Maria & Daniel" },
+        { "id": "finish", "value": "matte" }
+      ]
+    }
+  ],
+  "totals": [
+    { "type": "subtotal", "amount": 12000 },
+    { "type": "total", "amount": 12000 }
+  ],
+  "messages": [
+    {
+      "type": "error",
+      "code": "item_input_required",
+      "path": "$.line_items[0].inputs[1]",
+      "content": "Tell us the date of the event.",
+      "severity": "recoverable"
+    }
+  ],
+  "links": [ ... ]
+}
+```
+
+### Checkout: an answer is changed
+
+The buyer shortens the engraving. The Platform sends the line again with the
+complete set of answers.
+
+<!-- ucp:example schema=shopping/item_inputs def=dev.ucp.shopping.checkout op=update direction=request -->
+```json
+{
+  "line_items": [
+    {
+      "id": "li_1",
+      "item": { "id": "gid://example/Variant/watch-42-steel" },
+      "quantity": 1,
+      "input_values": [
+        { "id": "engraving_text", "value": "Happy 60th" },
+        { "id": "engraving_font", "value": "script" }
+      ]
+    }
+  ]
+}
+```
+
+### Checkout: two units, two engravings
+
+Two watches with different engravings are two lines. The Business keeps them
+apart.
+
+<!-- ucp:example schema=shopping/item_inputs def=dev.ucp.shopping.checkout op=create direction=request -->
+```json
+{
+  "line_items": [
+    {
+      "item": { "id": "gid://example/Variant/watch-42-steel" },
+      "quantity": 1,
+      "input_values": [
+        { "id": "engraving_text", "value": "For Sam" }
+      ]
+    },
+    {
+      "item": { "id": "gid://example/Variant/watch-42-steel" },
+      "quantity": 1,
+      "input_values": [
+        { "id": "engraving_text", "value": "For Alex" }
+      ]
+    }
+  ]
+}
+```
+
 ### Checkout: the Business stored a different form
 
 The buyer's text had a trailing space. The Business removed it and says so.
@@ -442,6 +775,58 @@ The buyer's text had a trailing space. The Business removed it and says so.
     "content": "Spaces at the end of the engraving were removed."
   }
 ]
+```
+
+### Checkout: hand-off for something this extension cannot carry
+
+A photo print needs an uploaded image. The Business holds the answers it was
+given and sends the buyer to its own page to add the photo.
+
+<!-- ucp:example schema=shopping/item_inputs def=dev.ucp.shopping.checkout op=read -->
+```json
+{
+  "ucp": { ... },
+  "id": "chk_ghi789",
+  "status": "requires_escalation",
+  "currency": "USD",
+  "line_items": [
+    {
+      "id": "li_1",
+      "item": { "id": "gid://example/Variant/photo-print-30x40", "title": "Photo Print, 30 x 40 cm", "price": 4500 },
+      "quantity": 1,
+      "totals": [
+        { "type": "subtotal", "amount": 4500 },
+        { "type": "total", "amount": 4500 }
+      ],
+      "inputs": [
+        {
+          "id": "caption",
+          "label": "Caption under the photo",
+          "required": false,
+          "input": { "type": "text", "max_length": 60 }
+        }
+      ],
+      "input_values": [
+        { "id": "caption", "value": "Lisbon, 2026" }
+      ]
+    }
+  ],
+  "totals": [
+    { "type": "subtotal", "amount": 4500 },
+    { "type": "total", "amount": 4500 }
+  ],
+  "messages": [
+    {
+      "type": "error",
+      "code": "photo_required",
+      "path": "$.line_items[0]",
+      "content": "Upload the photo to print.",
+      "severity": "requires_buyer_input"
+    }
+  ],
+  "continue_url": "https://example.com/checkout/ghi789",
+  "links": [ ... ]
+}
 ```
 
 ### Order: what was supplied
