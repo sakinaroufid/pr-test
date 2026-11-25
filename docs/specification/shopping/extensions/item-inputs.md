@@ -24,8 +24,8 @@ Item Inputs extension lets a Business say what it needs to know, lets a
 Platform send the buyer's answers with the line, and keeps those answers on the
 resulting Order.
 
-Today a line item is a variant and a quantity. A Business that sells an
-engravable watch has no way to ask for the engraving in its catalog, a Platform
+Today a line item is a variant and a quantity. A Business that sells a watch
+it can engrave has no way to ask for the engraving in its catalog, a Platform
 has no way to send it, and a checkout for that watch has to be handed off to
 the Business's website.
 

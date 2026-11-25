@@ -1,5 +1,7 @@
 # Draft comment for issue #349
 
+<!-- cspell:ignore zhang honghao wsbrunson pjordan -->
+
 > Post on <https://github.com/Universal-Commerce-Protocol/ucp/issues/349>
 > ("Line items have no field for buyer notes"), which maintainers kept
 > open to track this use case when closing #607. Post this before filing

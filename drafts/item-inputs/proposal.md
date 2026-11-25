@@ -1,5 +1,7 @@
 # [Proposal]: Item Inputs — buyer-supplied input on a line item (engraving, monogram, custom text)
 
+<!-- cspell:ignore wsbrunson karangoel pjordan jingyli ihoosain gsmith raginpirate Okafor Amara Zainab Trailhead -->
+
 > Draft, not yet filed. Intended as an Enhancement Proposal issue on
 > `Universal-Commerce-Protocol/ucp`. It picks up the per-item half of the
 > direction maintainers set when closing #915 and tracks the use case kept
@@ -77,7 +79,8 @@ answer:
 7. **Security and privacy were unaddressed.** (jingyli on #481; pjordan on
    #915: Business-controlled text reaching an agent, and no limit on
    collecting sensitive data.)
-8. **Fields must not become a side channel for effectful types.**
+8. **Fields must not become a side channel for types that have effects,
+   such as payment credentials.**
    (raginpirate on #481.)
 
 ## Who benefits, with examples
@@ -540,7 +543,7 @@ Review point 7.
   back to `requires_escalation`.
 - Cases across REST, MCP and A2A bindings.
 - A reference implementation in the samples repository: a store selling
-  an engravable product, and a client that reads the declaration,
+  a product that can be engraved, and a client that reads the declaration,
   collects the text and completes the purchase.
 
 ## Graduation Criteria
@@ -548,7 +551,7 @@ Review point 7.
 - **Provisional:** Tech Council agrees the scope and its relationship to
   the checkout-level fields work.
 - **Candidate:** schemas, specification text and conformance tests merged;
-  at least one Business and one Platform implementation interoperating.
+  at least one Business and one Platform implementation working together.
 - **Stable:** two independent Business implementations and two independent
   Platform implementations, including at least one marketplace with
   per-product rules.
