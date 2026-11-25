@@ -80,116 +80,152 @@ answer:
 8. **Fields must not become a side channel for effectful types.**
    (raginpirate on #481.)
 
-## Why this is in the interest of commerce platforms and marketplaces
+## Who benefits, with examples
 
-### Commerce platforms (Shopify, WooCommerce, Salesforce Commerce)
+The shops and people below are made up. The platform features they use
+are real, and are listed at the end of this section.
 
-**They already hold this data. The protocol is the only place it is
-missing.** Each platform has a way for a merchant to collect per-item
-input on its own storefront:
+### One order, three ways
 
-| Platform | What exists today | How it maps to this proposal |
-| --- | --- | --- |
-| Shopify | Custom key-value attributes on a cart line, described in Shopify's developer documentation as being for things "such as gift messages or engraving text" | `input_values` on the line item |
-| WooCommerce | The Product Add-Ons extension: short text, long text, date picker and other field types, with character limits and input restrictions | `inputs` declarations with `text` and `date` types and `max_length` |
-| Salesforce B2C Commerce | Product options for priced extras bought with a product *(free-text personalization on line items to be confirmed with Salesforce)* | `choice` inputs with a `price` |
+A buyer tells their assistant: "Order the walnut cutting board from this
+shop and have it engraved with *The Okafor Family, est. 2019*."
 
-So for a commerce platform this is a mapping exercise onto fields its
-merchants have already configured, not a new feature to build.
+The seller's listing says engraving is required and limited to 25
+characters. The buyer's text is 28.
 
-**Their merchants' personalized products are shut out of the agent
-channel.** A merchant on any of these platforms who sells engraved or
-made-to-order goods gets no benefit from the platform's protocol
-integration for those products: the checkout hands off to the website.
-Commerce platforms earn on the volume their merchants sell, so products
-that cannot be sold through the channel are revenue the platform has
-invested in and cannot collect.
+| How the order is placed | What happens |
+| --- | --- |
+| Through the protocol today | The assistant can add the board to a cart, but there is nowhere to put the engraving. It gives the buyer a link to finish on the shop's website. Some buyers do. Some don't bother. |
+| By an agent that operates the website like a person | It types the text into the box. Depending on the site, the last three characters are cut off or the form fails and the agent tries something else. If it goes through, the seller engraves "The Okafor Family, est. 2" on a board that cannot be returned or resold. |
+| With this proposal | The listing tells the assistant: one text answer, required, 25 characters at most. Before ordering, the assistant tells the buyer: "That's 28 characters and the limit is 25. Drop the comma and the period?" The buyer agrees. The seller gets text that fits. |
 
-**Without a standard, each platform carries the gap separately.** A
-community feature request reports that Shopify's own storefront MCP
-server cannot set line attributes when updating a cart, and that
-supporting it is not on the roadmap. The same hole exists in the protocol
-layer. If each agent platform fills it differently, every commerce
-platform maintains one mapping per agent platform. A single declared
-shape means one mapping.
+Everything below is that same story from the point of view of each
+company involved.
 
-**Unstructured key-value data is the wrong thing to hand an agent.** A
-bare attribute such as `engraving: "..."` tells an agent nothing about
-length limits, whether it is required, or what it costs. The agent
-guesses, and the merchant finds out at fulfillment. Declared inputs move
-the validation to before the order exists.
+### A jeweller on Shopify
 
-**It gives their app ecosystems a target.** Personalization on Shopify
-and WooCommerce is largely delivered by third-party apps and add-ons.
-Today none of that configuration is visible to an agent (see Discussion
-#27, where a Shopify seller asked exactly this). A standard declaration
-gives those apps one format to publish to. For WooCommerce in
-particular, a single plugin could expose existing Product Add-Ons fields
-to every agent with no work by the merchant.
+Amara sells name necklaces from a Shopify store. Her product page has a
+box: "Name, up to 10 letters." When a buyer types *Zainab*, Shopify saves
+it on that line of the cart. Shopify's own developer documentation
+describes this feature as being for things "such as gift messages or
+engraving text."
 
-**For enterprise brands, it preserves control.** Brands on Salesforce
-Commerce that offer personalization as a premium service (monogrammed
-leather goods, engraved jewelry, name-printed team apparel) care that the
-rules and the price are the brand's own. Declared inputs keep the brand
-as the author of those rules in a channel it does not otherwise control.
+Shopify has connected Amara's store to AI assistants. A buyer can now
+order her plain chains through an assistant. They cannot order the name
+necklace, which is what she mostly sells, because the assistant has no
+way to send the name.
 
-### Marketplaces (Etsy and others built on custom and handmade goods)
+What Shopify gets from this proposal:
 
-**Personalized listings are core inventory, not an edge case.** For a
-marketplace of handmade and custom goods, a protocol that cannot carry
-personalization excludes a large part of the catalog from agent checkout.
+- Amara's main product becomes something an assistant can sell. Shopify
+  earns when she does.
+- Shopify builds the connection once. Without a shared format, each
+  assistant would need its own way of sending "the name for the
+  necklace."
+- It closes a gap developers have already asked Shopify about. One
+  developer requested that Shopify's own AI cart tool be able to set
+  these per-item values, and was told it is not planned.
 
-**Rules are set per listing by each seller, which is the case this
-design is built for.** Etsy lets a seller add personalization questions
-to a listing, with instructions, a character limit on text answers, a
-required-or-optional setting, and several question types including text
-and dropdown. That is the same information as an `inputs` declaration.
-With millions of sellers each setting their own rules, only a
-per-product declaration works: a single merchant-level schema, as in
-#915, cannot describe them.
+What it costs Shopify: the *answer* is already stored, but the *rule*
+("up to 10 letters") usually lives in the shop's theme or in a
+personalization app. Shopify, or those apps, would need to publish the
+rules.
 
-**Mistakes cannot be undone.** A custom item made with the wrong text is
-usually not returnable and cannot be resold. On a marketplace the cost
-lands as a buyer case, a refund or remake by the seller, and a support
-contact for the marketplace. Catching an invalid or missing value before
-the order is placed is worth more here than for any other product type.
+### A pet shop on WooCommerce
 
-**The seller, not the marketplace, makes the item.** The buyer's input
-has to pass accurately from the agent, through the marketplace, to a
-third-party seller. A structured value recorded on the order gives all
-three parties the same record when something is disputed.
+Dev runs a small WooCommerce store selling dog collars. He uses the
+Product Add-Ons extension to add a field to each collar: "Pet's name, up
+to 12 characters, add $5."
 
-**Gifts.** Personalized goods are disproportionately bought as gifts,
-and gift shopping is among the most common tasks buyers hand to an
-agent. A marketplace strong in gifts has the most to gain from agents
-being able to complete these purchases.
+Here the rule is already written down in a structured way, inside the
+extension. One update to that extension could publish every such field
+to assistants. Dev would not have to do anything, and neither would the
+many other shops using the same extension.
 
-**The alternative is agents the marketplace does not control.**
-Browser-driving agents can already type into a personalization box.
-They infer the rules from the page, carry no agent identity or record of
-buyer consent, and are hard to tell apart from the automated traffic
-marketplaces block. A marketplace that has chosen protocol integration
-for those reasons currently has to leave its personalized listings to
-exactly that kind of agent, or out of agent checkout altogether.
+That matters for WooCommerce because its shops are small and numerous.
+None of them will write custom code for AI assistants. If it does not
+arrive through a plugin update, it does not arrive.
 
-### What it asks of them
+### A football club's store on Salesforce Commerce
 
-- **Commerce platforms:** publish the fields merchants have already
-  configured as `inputs` in catalog responses, accept `input_values` on
-  line items, and return validation errors. No change to merchant
-  storefronts.
-- **Marketplaces:** the same, per listing, using the personalization
-  settings sellers already maintain.
-- **Neither** is asked to share data it does not already show on a
+A club sells replica shirts. For an extra £15 a fan can add a name of up
+to 12 letters and a squad number. The club refuses some names, such as
+swear words or a rival player's name.
+
+A large brand like this cares about two things in a sales channel it
+does not run itself: the price is the one it set, and its rules are
+followed. With this proposal the club publishes the rules and the price,
+and checks every name itself. If it rejects one, the assistant is told
+so and can ask the fan for another. The club never has to accept an
+order it would have refused on its own website.
+
+*(Draft note: how Salesforce Commerce stores a buyer's custom text on an
+order line still needs confirming with someone who knows the platform.
+Its priced product options are documented.)*
+
+### A marketplace like Etsy
+
+The cutting board at the top of this section is a typical marketplace
+order. Four things make marketplaces the companies with the most at
+stake.
+
+**A lot of what they sell is personalized.** Wedding signs, name
+necklaces, pet portraits, engraved boards. If assistants cannot order
+these, a large share of the marketplace cannot be bought through
+assistants at all.
+
+**Every seller sets different rules.** Etsy already lets a seller add
+questions to a listing, with instructions, a character limit, and a
+choice of required or optional. One shop allows 25 characters. The next
+asks two questions, a name and a date. A third offers a dropdown of
+fonts. This proposal sends those per-listing rules to the assistant as
+they are. An approach where each merchant publishes one set of rules for
+its whole shop cannot describe a marketplace with millions of sellers.
+
+**A mistake cannot be fixed.** If the board is engraved wrong, the seller
+has made something nobody else wants. The buyer opens a case. The seller
+refunds or remakes it at their own cost. The marketplace's support team
+handles the complaint. Catching the problem before the order is placed
+saves all three.
+
+**Three parties need the same record.** The buyer told the assistant,
+the assistant told the marketplace, the marketplace told the seller. If
+the board arrives wrong, someone has to work out where it went wrong.
+With this proposal the order itself records exactly what text was sent.
+
+### "Can't agents already do this by using the website?"
+
+Yes. An agent that clicks through a website can type into an engraving
+box. Marketplaces and large shops have three problems with that:
+
+- The agent is guessing the rules from what the page looks like. The
+  cutting board example shows what a wrong guess costs.
+- The shop cannot tell that agent apart from the bots it already blocks.
+- Nothing records that the buyer approved that exact text.
+
+Companies that joined this protocol did so to get assistants they can
+identify, working to rules the company wrote. Today, for personalized
+items, they have to send the buyer back to the website or leave the sale
+to the kind of agent they were trying to avoid.
+
+### What each company would have to do
+
+- **Shopify, WooCommerce, Salesforce Commerce:** publish the questions
+  merchants have already set up, accept the answers with the order, and
+  say clearly when an answer is not acceptable. Shop owners change
+  nothing on their websites.
+- **Etsy and other marketplaces:** the same, listing by listing, using
+  the personalization settings sellers already fill in.
+- **Nobody** is asked to share anything that is not already shown on the
   product page.
 
-### References for this section
+### Where the platform details come from
 
 - Shopify, Cart Lines API (line attributes "such as gift messages or
   engraving text"):
   <https://shopify.dev/docs/api/checkout-ui-extensions/2026-10-rc/target-apis/checkout-apis/cart-lines-api.md>
-- Shopify developer community, feature request for line item attributes
-  in the Storefront MCP server `update_cart` tool:
+- Shopify developer community, request for per-item attributes in the
+  Storefront MCP server's `update_cart` tool:
   <https://community.shopify.dev/t/feature-request-storefront-mcp-server-update-cart-tool-should-support-line-item-attributes/28128>
 - WooCommerce, Product Add-Ons:
   <https://woocommerce.com/products/product-add-ons/>
