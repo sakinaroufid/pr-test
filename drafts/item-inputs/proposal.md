@@ -203,6 +203,15 @@ box. Marketplaces and large shops have three problems with that:
 - The shop cannot tell that agent apart from the bots it already blocks.
 - Nothing records that the buyer approved that exact text.
 
+"It already works" also deserves a follow-up question: how often? An
+agent that gets the engraving right nine times in ten sounds good until
+you are the seller remaking the tenth board. And it works only until the
+shop redesigns its product page.
+
+Companies that build assistants able to operate websites also helped
+write this protocol. They would not have done that if clicking through
+websites were enough.
+
 Companies that joined this protocol did so to get assistants they can
 identify, working to rules the company wrote. Today, for personalized
 items, they have to send the buyer back to the website or leave the sale
