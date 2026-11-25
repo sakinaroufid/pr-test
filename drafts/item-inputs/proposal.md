@@ -80,6 +80,126 @@ answer:
 8. **Fields must not become a side channel for effectful types.**
    (raginpirate on #481.)
 
+## Why this is in the interest of commerce platforms and marketplaces
+
+### Commerce platforms (Shopify, WooCommerce, Salesforce Commerce)
+
+**They already hold this data. The protocol is the only place it is
+missing.** Each platform has a way for a merchant to collect per-item
+input on its own storefront:
+
+| Platform | What exists today | How it maps to this proposal |
+| --- | --- | --- |
+| Shopify | Custom key-value attributes on a cart line, described in Shopify's developer documentation as being for things "such as gift messages or engraving text" | `input_values` on the line item |
+| WooCommerce | The Product Add-Ons extension: short text, long text, date picker and other field types, with character limits and input restrictions | `inputs` declarations with `text` and `date` types and `max_length` |
+| Salesforce B2C Commerce | Product options for priced extras bought with a product *(free-text personalization on line items to be confirmed with Salesforce)* | `choice` inputs with a `price` |
+
+So for a commerce platform this is a mapping exercise onto fields its
+merchants have already configured, not a new feature to build.
+
+**Their merchants' personalized products are shut out of the agent
+channel.** A merchant on any of these platforms who sells engraved or
+made-to-order goods gets no benefit from the platform's protocol
+integration for those products: the checkout hands off to the website.
+Commerce platforms earn on the volume their merchants sell, so products
+that cannot be sold through the channel are revenue the platform has
+invested in and cannot collect.
+
+**Without a standard, each platform carries the gap separately.** A
+community feature request reports that Shopify's own storefront MCP
+server cannot set line attributes when updating a cart, and that
+supporting it is not on the roadmap. The same hole exists in the protocol
+layer. If each agent platform fills it differently, every commerce
+platform maintains one mapping per agent platform. A single declared
+shape means one mapping.
+
+**Unstructured key-value data is the wrong thing to hand an agent.** A
+bare attribute such as `engraving: "..."` tells an agent nothing about
+length limits, whether it is required, or what it costs. The agent
+guesses, and the merchant finds out at fulfillment. Declared inputs move
+the validation to before the order exists.
+
+**It gives their app ecosystems a target.** Personalization on Shopify
+and WooCommerce is largely delivered by third-party apps and add-ons.
+Today none of that configuration is visible to an agent (see Discussion
+#27, where a Shopify seller asked exactly this). A standard declaration
+gives those apps one format to publish to. For WooCommerce in
+particular, a single plugin could expose existing Product Add-Ons fields
+to every agent with no work by the merchant.
+
+**For enterprise brands, it preserves control.** Brands on Salesforce
+Commerce that offer personalization as a premium service (monogrammed
+leather goods, engraved jewelry, name-printed team apparel) care that the
+rules and the price are the brand's own. Declared inputs keep the brand
+as the author of those rules in a channel it does not otherwise control.
+
+### Marketplaces (Etsy and others built on custom and handmade goods)
+
+**Personalized listings are core inventory, not an edge case.** For a
+marketplace of handmade and custom goods, a protocol that cannot carry
+personalization excludes a large part of the catalog from agent checkout.
+
+**Rules are set per listing by each seller, which is the case this
+design is built for.** Etsy lets a seller add personalization questions
+to a listing, with instructions, a character limit on text answers, a
+required-or-optional setting, and several question types including text
+and dropdown. That is the same information as an `inputs` declaration.
+With millions of sellers each setting their own rules, only a
+per-product declaration works: a single merchant-level schema, as in
+#915, cannot describe them.
+
+**Mistakes cannot be undone.** A custom item made with the wrong text is
+usually not returnable and cannot be resold. On a marketplace the cost
+lands as a buyer case, a refund or remake by the seller, and a support
+contact for the marketplace. Catching an invalid or missing value before
+the order is placed is worth more here than for any other product type.
+
+**The seller, not the marketplace, makes the item.** The buyer's input
+has to pass accurately from the agent, through the marketplace, to a
+third-party seller. A structured value recorded on the order gives all
+three parties the same record when something is disputed.
+
+**Gifts.** Personalized goods are disproportionately bought as gifts,
+and gift shopping is among the most common tasks buyers hand to an
+agent. A marketplace strong in gifts has the most to gain from agents
+being able to complete these purchases.
+
+**The alternative is agents the marketplace does not control.**
+Browser-driving agents can already type into a personalization box.
+They infer the rules from the page, carry no agent identity or record of
+buyer consent, and are hard to tell apart from the automated traffic
+marketplaces block. A marketplace that has chosen protocol integration
+for those reasons currently has to leave its personalized listings to
+exactly that kind of agent, or out of agent checkout altogether.
+
+### What it asks of them
+
+- **Commerce platforms:** publish the fields merchants have already
+  configured as `inputs` in catalog responses, accept `input_values` on
+  line items, and return validation errors. No change to merchant
+  storefronts.
+- **Marketplaces:** the same, per listing, using the personalization
+  settings sellers already maintain.
+- **Neither** is asked to share data it does not already show on a
+  product page.
+
+### References for this section
+
+- Shopify, Cart Lines API (line attributes "such as gift messages or
+  engraving text"):
+  <https://shopify.dev/docs/api/checkout-ui-extensions/2026-10-rc/target-apis/checkout-apis/cart-lines-api.md>
+- Shopify developer community, feature request for line item attributes
+  in the Storefront MCP server `update_cart` tool:
+  <https://community.shopify.dev/t/feature-request-storefront-mcp-server-update-cart-tool-should-support-line-item-attributes/28128>
+- WooCommerce, Product Add-Ons:
+  <https://woocommerce.com/products/product-add-ons/>
+- Salesforce Trailhead, B2C product options:
+  <https://trailhead.salesforce.com/content/learn/modules/b2c-catalog-category-product/b2c-product-sets-bundles-options>
+- Etsy Help, How to Offer Personalized Listings:
+  <https://help.etsy.com/hc/en-us/articles/360000344528-How-to-Offer-Personalized-Listings>
+- Etsy developer documentation, personalization question types:
+  <https://developer.etsy.com/documentation/tutorials/personalization/multiple-and-new-question-type-support>
+
 ## Goals
 
 - A Platform can tell from Catalog that a product needs buyer input, what
